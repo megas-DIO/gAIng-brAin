@@ -1,0 +1,92 @@
+openapi: 3.1.0
+info:
+  title: gAIng Brain API
+  version: 1.0.0
+servers:
+  - url: https://adjoining-multimolecular-ursula.ngrok-free.dev
+paths:
+  /query:
+    post:
+      summary: Query shared memories
+      security:
+        - BrainToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string }
+                top_k: { type: integer, minimum: 1, maximum: 50, default: 8 }
+                threshold: { type: number, minimum: 0, maximum: 1, default: 0.0 }
+                tags:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200":
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        created_at: { type: string }
+                        author: { type: string }
+                        kind: { type: string }
+                        title: { type: string, nullable: true }
+                        content: { type: string }
+                        tags:
+                          type: array
+                          items: { type: string }
+                        confidence: { type: number }
+                        pinned: { type: boolean }
+                        similarity: { type: number, nullable: true }
+  /upsert:
+    post:
+      summary: Store a memory
+      security:
+        - BrainToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [author, kind, content]
+              properties:
+                id: { type: string, description: Optional UUID to upsert by id }
+                author: { type: string }
+                kind:
+                  type: string
+                  enum: [fact, decision, task, note, preference, prompt, warning]
+                title: { type: string }
+                content: { type: string }
+                tags:
+                  type: array
+                  items: { type: string }
+                confidence: { type: number, minimum: 0, maximum: 1, default: 0.6 }
+                pinned: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Inserted/updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  id: { type: string }
+components:
+  securitySchemes:
+    BrainToken:
+      type: apiKey
+      in: header
+      name: X-BRAIN-TOKEN
