@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [ gAIng-brAIn, main, develop ]
+  pull_request:
+    branches: [ gAIng-brAIn, main, develop ]
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [ 18.x, 20.x ]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Lint
+        run: npm run lint --if-present
+      
+      - name: Validate server syntax
+        run: node --check server.js
+      
+      - name: Validate OpenAPI spec
+        run: npm run validate-openapi --if-present
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+  deploy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Verify .env.example exists
+        run: test -f .env.example || (echo ".env.example missing"; exit 1)
+      
+      - name: Verify bootstrap script exists
+        run: test -f scripts/bootstrap.ps1 || (echo "bootstrap.ps1 missing"; exit 1)
+      
+      - name: Verify OpenAPI spec exists
+        run: test -f openapi.yaml || (echo "openapi.yaml missing"; exit 1)
