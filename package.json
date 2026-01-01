@@ -1,0 +1,23 @@
+{
+  "dependencies": {
+    "@ngrok/ngrok": "^1.7.0",
+    "@supabase/supabase-js": "^2.89.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "mem0ai": "^1.0.39"
+  },
+  "name": "gaing-brain",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "seed:members": "node scripts/seed-members.js",
+    "health:db": "node scripts/health-check.js",
+    "test": "node scripts/smoke-test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
