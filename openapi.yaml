@@ -1,0 +1,109 @@
+openapi: 3.1.0
+info:
+  title: gaing-brain API
+  version: 1.0.0
+servers:
+  - url: https://adjoining-multimolecular-ursula.ngrok-free.dev
+components:
+  securitySchemes:
+    BrainToken:
+      type: apiKey
+      in: header
+      name: X-BRAIN-TOKEN
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+  /upsert:
+    post:
+      summary: Upsert a memory
+      security:
+        - BrainToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - author
+                - kind
+                - content
+              properties:
+                id:
+                  type: string
+                author:
+                  type: string
+                kind:
+                  type: string
+                  enum: [fact, decision, task, note, preference, prompt, warning]
+                title:
+                  type: string
+                content:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                confidence:
+                  type: number
+                pinned:
+                  type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  id:
+                    type: string
+  /query:
+    post:
+      summary: Query memories
+      security:
+        - BrainToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                top_k:
+                  type: integer
+                threshold:
+                  type: number
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
