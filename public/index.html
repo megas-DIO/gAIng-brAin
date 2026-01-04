@@ -362,6 +362,30 @@
             }
         }
 
+                async function analyzeScreen() {
+            const chatHistory = document.getElementById('chat-history');
+            chatHistory.innerHTML += '<div class="text-cyber-neon italic">> Analyzing visual field...</div>';
+            
+            try {
+                const res = await fetch(\\/eyes/analyze\, { method: 'POST', headers: authHeaders() });
+                const data = await res.json();
+                
+                if(data.success) {
+                    chatHistory.innerHTML += \<div class="text-white mb-2">\</div>\;
+                    
+                    // Show Image
+                    if(data.url) {
+                        chatHistory.innerHTML += \<img src="\\" class="w-full border border-cyber-green mt-2 mb-4" />\;
+                    }
+                } else {
+                    chatHistory.innerHTML += \<div class="text-red-500">[ERROR] \</div>\;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Visual sensors offline.');
+            }
+        }
+
         function switchTab(tab) {
             document.getElementById('view-mission').classList.add('hidden');
             document.getElementById('view-memories').classList.add('hidden');
@@ -426,6 +450,7 @@
     </script>
 </body>
 </html>
+
 
 
 
