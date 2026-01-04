@@ -9,6 +9,7 @@
         "express-rate-limit": "^8.2.1",
         "ioredis": "^5.3.2",
         "mem0ai": "^1.0.39",
+        "multer": "^2.0.2",
         "screenshot-desktop": "^1.15.3",
         "sql.js": "^1.13.0",
         "uuid": "^13.0.0",

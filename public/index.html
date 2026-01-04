@@ -386,6 +386,73 @@
             }
         }
 
+                let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        async function toggleMic() {
+            const micBtn = document.getElementById('mic-btn');
+            const micIcon = document.getElementById('mic-icon');
+            
+            if (!isRecording) {
+                // START RECORDING
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        await sendAudio(audioBlob);
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micBtn.className = 'ml-4 text-red-500 animate-pulse transition-colors';
+                } catch (err) {
+                    console.error(err);
+                    alert('Microphone access denied.');
+                }
+            } else {
+                // STOP RECORDING
+                mediaRecorder.stop();
+                isRecording = false;
+                micBtn.className = 'ml-4 text-cyber-neon hover:text-white transition-colors';
+            }
+        }
+
+        async function sendAudio(blob) {
+            const chatHistory = document.getElementById('chat-history');
+            chatHistory.innerHTML += '<div class="text-cyber-neon italic">> Sending audio signal...</div>';
+
+            const formData = new FormData();
+            formData.append('audio', blob);
+
+            try {
+                const res = await fetch(\\/ears/listen\, {
+                    method: 'POST',
+                    headers: { 'Authorization': authHeaders()['Authorization'] }, // No Content-Type for FormData
+                    body: formData
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    chatHistory.innerHTML += \<div class="text-cyber-neon">> \</div>\;
+                    document.getElementById('vision-thought').innerText = "Processing Voice Command...";
+                } else {
+                    chatHistory.innerHTML += \<div class="text-red-500">[ERROR] \</div>\;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Audio transmission failed.');
+            }
+        }
+
         function switchTab(tab) {
             document.getElementById('view-mission').classList.add('hidden');
             document.getElementById('view-memories').classList.add('hidden');
@@ -450,6 +517,7 @@
     </script>
 </body>
 </html>
+
 
 
 
