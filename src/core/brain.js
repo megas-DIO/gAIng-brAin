@@ -1,7 +1,7 @@
 const { spawn } = require(''child_process'');
 const blackboard = require(''../services/blackboard'');
 const Mission = require(''./mission'');
-const { planner } = require(''../workers'');
+const workers = require(''../workers'');
 
 class Brain {
     constructor() {
@@ -22,15 +22,18 @@ class Brain {
         console.log(''[Brain] Core logic active. Waiting for input.'');
     }
 
-    // Handle explicit shell commands from log.md
     async handleCommand(command) {
-        console.log(`[Brain] Executing: ${command}`);
-        blackboard.broadcast(''ACTING'', `Executing: ${command}`);
-
-        this.executeShell(command);
+        const cmd = command.trim().toUpperCase();
+        
+        if (cmd === ''GO'' && this.activeMission) {
+            this.runMission();
+        } else {
+            console.log(`[Brain] Executing Shell: ${command}`);
+            blackboard.broadcast(''ACTING'', `Executing: ${command}`);
+            this.executeShell(command);
+        }
     }
 
-    // Handle abstract thoughts or chat -> OMEGA PIPELINE
     async handleThought(msg) {
         console.log(`[Brain] Pondering: ${msg}`);
         blackboard.broadcast(''THINKING'', `Analyzing request: ${msg}`);
@@ -39,9 +42,9 @@ class Brain {
         this.activeMission = new Mission(msg);
         blackboard.write(`MISSION STARTED [${this.activeMission.id}]: ${msg}`);
         
-        // 2. Plan Mission (The Planner)
+        // 2. Plan Mission
         this.activeMission.setStatus(''PLANNING'');
-        const planResult = await planner.execute(this.activeMission);
+        const planResult = await workers.planner.execute(this.activeMission);
 
         if (planResult.success) {
             blackboard.broadcast(''PLAN_READY'', `Created ${this.activeMission.steps.length} step plan.`);
@@ -50,9 +53,9 @@ class Brain {
             this.activeMission.steps.forEach(s => {
                 planText += `- [ ] [${s.agent}] ${s.instruction}\n`;
             });
+            planText += `\n**Type "- cmd: GO" to execute the plan.**`;
             blackboard.write(planText);
             
-            // TODO: In v0.1, we will auto-execute. For now, we wait for user confirmation.
             blackboard.broadcast(''IDLE'', ''Plan created. Waiting for GO.'');
         } else {
             blackboard.broadcast(''ERROR'', `Planning failed: ${planResult.error}`);
@@ -60,25 +63,57 @@ class Brain {
         }
     }
 
-    // execute command in the host shell
+    async runMission() {
+        if (!this.activeMission || this.isProcessing) return;
+        this.isProcessing = true;
+        
+        blackboard.broadcast(''ACTING'', ''Executing Mission Steps...'');
+        this.activeMission.setStatus(''ACTIVE'');
+
+        for (const step of this.activeMission.steps) {
+            if (step.status !== ''pending'') continue;
+
+            blackboard.broadcast(''WORKING'', `[${step.agent}] ${step.instruction}`);
+            this.activeMission.updateStep(step.id, ''processing'');
+
+            const worker = workers[step.agent];
+            if (!worker) {
+                console.error(`[Brain] No worker found for agent: ${step.agent}`);
+                this.activeMission.updateStep(step.id, ''failed'', ''Worker not found'');
+                continue;
+            }
+
+            const result = await worker.execute(this.activeMission, step);
+
+            if (result.success) {
+                this.activeMission.updateStep(step.id, ''complete'', result.detail);
+                blackboard.write(`Step ${step.id} Complete: ${step.instruction}`);
+            } else {
+                this.activeMission.updateStep(step.id, ''failed'', result.error);
+                blackboard.write(`Step ${step.id} Failed: ${result.error}`);
+                this.activeMission.setStatus(''BLOCKED'');
+                break; 
+            }
+        }
+
+        const allComplete = this.activeMission.steps.every(s => s.status === ''complete'');
+        if (allComplete) {
+            this.activeMission.setStatus(''COMPLETE'');
+            blackboard.broadcast(''DONE'', ''Mission Objective Reached.'');
+            blackboard.write(`MISSION COMPLETE: ${this.activeMission.objective}`);
+        }
+
+        this.isProcessing = false;
+        this.activeMission = null;
+    }
+
     executeShell(cmd) {
-        // Use Antigravity tools if available
         const shell = process.platform === ''win32'' ? ''powershell.exe'' : ''bash'';
         const args = process.platform === ''win32'' ? [''-Command'', cmd] : [''-c'', cmd];
-
         const proc = spawn(shell, args);
 
-        proc.stdout.on(''data'', (data) => {
-            const output = data.toString().trim();
-            console.log(`[Shell] ${output}`);
-        });
-
-        proc.stderr.on(''data'', (data) => {
-            console.error(`[Shell Error] ${data}`);
-        });
-
+        proc.stdout.on(''data'', (data) => console.log(`[Shell] ${data.toString().trim()}`));
         proc.on(''close'', (code) => {
-            console.log(`[Shell] Exited with code ${code}`);
             blackboard.broadcast(''IDLE'', `Command finished (Exit: ${code})`);
             blackboard.write(`Executed: ${cmd} (Exit: ${code})`);
         });
