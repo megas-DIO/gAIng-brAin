@@ -13,6 +13,7 @@ const systemRoutes = require('./routes/system');
 const safaRoutes = require('./routes/safa');
 const agentsRoutes = require('./routes/agents');
 const missionRoutes = require('./routes/mission');
+const voiceRoutes = require('./routes/voice');
 
 // CORS - allow configured origins or all in dev
 const corsOptions = {
@@ -45,6 +46,8 @@ app.use('/llm', llmRoutes);
 app.use('/safa', safaRoutes);
 app.use('/agents', agentsRoutes);
 app.use('/mission', missionRoutes);
+app.use('/voice', voiceRoutes);
 
 module.exports = app;
+
 
