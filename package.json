@@ -1,23 +1,48 @@
 {
-  "dependencies": {
-    "@ngrok/ngrok": "^1.7.0",
-    "@supabase/supabase-js": "^2.89.0",
-    "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "mem0ai": "^1.0.39"
-  },
-  "name": "gaing-brain",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "seed:members": "node scripts/seed-members.js",
-    "health:db": "node scripts/health-check.js",
-    "test": "node scripts/smoke-test.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+    "dependencies": {
+        "@ngrok/ngrok": "^1.7.0",
+        "@ngrok/ngrok-win32-x64-msvc": "^1.7.0",
+        "@supabase/supabase-js": "^2.89.0",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^5.2.1",
+        "express-rate-limit": "^8.2.1",
+        "ioredis": "^5.3.2",
+        "mem0ai": "^1.0.39",
+        "sql.js": "^1.13.0",
+        "uuid": "^13.0.0",
+        "ws": "^8.14.2"
+    },
+    "name": "gaing-brain",
+    "version": "1.0.0",
+    "description": "Collective memory database for AI agents",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "start:server": "node index.js",
+        "start:ngrok": "ngrok http 8080",
+        "start:all": "powershell -NoProfile -Command \"Start-Process powershell -ArgumentList '-NoExit','-Command','node index.js'; Start-Process powershell -ArgumentList '-NoExit','-Command','ngrok http 8080'\"",
+        "seed:members": "node scripts/seed-members.js",
+        "health:db": "node scripts/health-check.js",
+        "init:local-db": "node scripts/init-local-db.js",
+        "sync:two-way": "node scripts/sync-two-way.js",
+        "rotate-logs": "node scripts/rotate-logs.js",
+        "test": "node scripts/smoke-test.js",
+        "orchestrate": "node src/orchestrator.js",
+        "orchestrate:watch": "node src/orchestrator.js watch",
+        "worker:claude": "node src/agent-worker.js claude",
+        "worker:gemini": "node src/agent-worker.js gemini",
+        "worker:codex": "node src/agent-worker.js codex",
+        "safa": "node src/safa-telegram-bot.js",
+        "safa:bot": "node src/safa-telegram-bot.js"
+    },
+    "keywords": [
+        "ai",
+        "agents",
+        "memory",
+        "supabase"
+    ],
+    "author": "gAIng Collective",
+    "license": "ISC",
+    "type": "commonjs"
 }
