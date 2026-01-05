@@ -35,12 +35,12 @@ function request(method, path) {
 }
 
 async function run() {
-  const health = await request('GET', '/');
+  const health = await request('GET', '/health');
   let parsed = null;
   try {
     parsed = JSON.parse(health.body);
   } catch (err) {
-    throw new Error('Expected JSON from /');
+    throw new Error('Expected JSON from /health');
   }
 
   if (health.status !== 200 || !parsed || !parsed.ok) {

@@ -1,9 +1,9 @@
-const Worker = require(''../core/worker'');
-const { callLlm } = require(''../services/llm'');
+const Worker = require('../core/worker');
+const { callLlm } = require('../services/llm');
 
 class Planner extends Worker {
     constructor() {
-        super(''Claude'', ''Planner'');
+        super('Claude', 'Planner');
     }
 
     async execute(mission) {
@@ -29,14 +29,14 @@ class Planner extends Worker {
 
         try {
             const response = await callLlm({
-                messages: [{ role: ''user'', content: prompt }],
+                messages: [{ role: 'user', content: prompt }],
                 temperature: 0.2
             });
 
             const content = response.choices ? response.choices[0].message.content : response.response.content;
             
             // Basic cleanup to ensure JSON
-            const jsonStr = content.replace(/```json/g, '''').replace(/```/g, '''').trim();
+            const jsonStr = content.replace(/```json/g, ').replace(/```/g, ').trim();
             const plan = JSON.parse(jsonStr);
 
             mission.steps = []; // Reset steps
@@ -44,14 +44,15 @@ class Planner extends Worker {
                 mission.addStep(s.agent.toLowerCase(), s.instruction);
             });
             
-            mission.setStatus(''ACTIVE'');
+            mission.setStatus('ACTIVE');
             return { success: true, plan: mission.steps };
 
         } catch (err) {
-            console.error(''[Planner] Failed to generate plan:'', err);
+            console.error('[Planner] Failed to generate plan:', err);
             return { success: false, error: err.message };
         }
     }
 }
 
 module.exports = new Planner();
+

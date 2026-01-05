@@ -1,9 +1,9 @@
-const express = require(''express'');
+const express = require('express');
 const router = express.Router();
-const brain = require(''../core/brain'');
+const brain = require('../core/brain');
 
 // Get active mission state
-router.get(''/'', (req, res) => {
+router.get('/', (req, res) => {
     if (brain.activeMission) {
         res.json({ 
             active: true, 
@@ -18,3 +18,4 @@ router.get(''/'', (req, res) => {
 });
 
 module.exports = router;
+

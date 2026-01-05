@@ -1,12 +1,12 @@
-const fs = require(''fs'');
-const path = require(''path'');
-const { spawn } = require(''child_process'');
-const Worker = require(''../core/worker'');
-const { callLlm } = require(''../services/llm'');
+const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
+const Worker = require('../core/worker');
+const { callLlm } = require('../services/llm');
 
 class Builder extends Worker {
     constructor() {
-        super(''Codex'', ''Builder'');
+        super('Codex', 'Builder');
     }
 
     async execute(mission, step) {
@@ -31,23 +31,23 @@ class Builder extends Worker {
 
         try {
             const response = await callLlm({
-                messages: [{ role: ''user'', content: prompt }],
+                messages: [{ role: 'user', content: prompt }],
                 temperature: 0.1
             });
 
             const contentStr = response.choices ? response.choices[0].message.content : response.response.content;
-            const actionPlan = JSON.parse(contentStr.replace(/```json/g, '''').replace(/```/g, '''').trim());
+            const actionPlan = JSON.parse(contentStr.replace(/```json/g, ').replace(/```/g, ').trim());
 
-            if (actionPlan.action === ''WRITE_FILE'') {
+            if (actionPlan.action === 'WRITE_FILE') {
                 return await this.writeFile(actionPlan.path, actionPlan.content);
-            } else if (actionPlan.action === ''RUN_COMMAND'') {
+            } else if (actionPlan.action === 'RUN_COMMAND') {
                 return await this.runCommand(actionPlan.command);
             }
 
-            return { success: false, error: ''Unknown action type'' };
+            return { success: false, error: 'Unknown action type' };
 
         } catch (err) {
-            console.error(''[Builder] Execution failed:'', err);
+            console.error('[Builder] Execution failed:', err);
             return { success: false, error: err.message };
         }
     }
@@ -71,15 +71,15 @@ class Builder extends Worker {
 
     runCommand(cmd) {
         return new Promise((resolve) => {
-            const shell = process.platform === ''win32'' ? ''powershell.exe'' : ''bash'';
-            const args = process.platform === ''win32'' ? [''-Command'', cmd] : [''-c'', cmd];
+            const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
+            const args = process.platform === 'win32' ? ['-Command', cmd] : ['-c', cmd];
             const proc = spawn(shell, args);
 
-            let output = '''';
-            proc.stdout.on(''data'', (data) => output += data.toString());
-            proc.stderr.on(''data'', (data) => output += data.toString());
+            let output = '';
+            proc.stdout.on('data', (data) => output += data.toString());
+            proc.stderr.on('data', (data) => output += data.toString());
 
-            proc.on(''close'', (code) => {
+            proc.on('close', (code) => {
                 resolve({ 
                     success: code === 0, 
                     detail: output.trim() || `Process exited with code ${code}` 
@@ -90,3 +90,4 @@ class Builder extends Worker {
 }
 
 module.exports = new Builder();
+

@@ -2,6 +2,7 @@
     "dependencies": {
         "@ngrok/ngrok": "^1.7.0",
         "@ngrok/ngrok-win32-x64-msvc": "^1.7.0",
+        "@openai/agents-realtime": "^0.3.7",
         "@supabase/supabase-js": "^2.89.0",
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
@@ -10,6 +11,7 @@
         "ioredis": "^5.3.2",
         "mem0ai": "^1.0.39",
         "multer": "^2.0.2",
+        "openai": "^6.15.0",
         "screenshot-desktop": "^1.15.3",
         "sql.js": "^1.13.0",
         "uuid": "^13.0.0",

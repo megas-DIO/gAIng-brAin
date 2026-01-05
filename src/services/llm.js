@@ -1,8 +1,8 @@
-const config = require(''../config/env'');
+const config = require('../config/env');
 
 function getLlmStatus() {
   if (!config.LLM_PROVIDER) {
-    return { provider: null, ready: false, missing: [''LLM_PROVIDER''] };
+    return { provider: null, ready: false, missing: ['LLM_PROVIDER'] };
   }
   return { provider: config.LLM_PROVIDER, ready: true };
 }
@@ -13,20 +13,25 @@ async function callLlm(payload) {
     let apiKey, baseUrl, model;
 
     // --- PROVIDER CONFIGURATION ---
-    if (provider === ''openai'') {
+    if (provider === 'openai') {
         apiKey = config.OPENAI_API_KEY;
-        baseUrl = config.OPENAI_BASE_URL || ''https://api.openai.com/v1'';
-        model = payload.model || config.OPENAI_MODEL || ''gpt-4o-mini'';
+        baseUrl = config.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+        model = payload.model || config.OPENAI_MODEL || 'gpt-4o-mini';
     } 
-    else if (provider === ''grok'') {
+    else if (provider === 'grok') {
         apiKey = config.GROK_API_KEY;
-        baseUrl = ''https://api.x.ai/v1'';
-        model = payload.model || ''grok-beta'';
+        baseUrl = 'https://api.x.ai/v1';
+        model = payload.model || 'grok-beta';
     } 
-    else if (provider === ''deepseek'') {
+    else if (provider === 'deepseek') {
         apiKey = config.DEEPSEEK_API_KEY;
-        baseUrl = config.DEEPSEEK_BASE_URL || ''https://api.deepseek.com/v1'';
-        model = payload.model || ''deepseek-chat'';
+        baseUrl = config.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
+        model = payload.model || 'deepseek-chat';
+    }
+    else if (provider === 'perplexity') {
+        apiKey = config.PERPLEXITY_API_KEY;
+        baseUrl = 'https://api.perplexity.ai';
+        model = payload.model || 'llama-3.1-sonar-small-128k-online';
     }
     else {
         throw new Error(`Unknown LLM Provider: ${provider}`);
@@ -37,10 +42,10 @@ async function callLlm(payload) {
     // --- API CALL ---
     try {
         const response = await fetch(`${baseUrl}/chat/completions`, {
-            method: ''POST'',
+            method: 'POST',
             headers: {
-                ''Content-Type'': ''application/json'',
-                ''Authorization'': `Bearer ${apiKey}`
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
                 model: model,

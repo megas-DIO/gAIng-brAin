@@ -1,9 +1,9 @@
-const screenshot = require(''screenshot-desktop'');
-const path = require(''path'');
-const fs = require(''fs'');
-const { callLlm } = require(''./llm'');
+const screenshot = require('screenshot-desktop');
+const path = require('path');
+const fs = require('fs');
+const { callLlm } = require('./llm');
 
-const PUBLIC_DIR = path.join(process.cwd(), ''public'', ''captures'');
+const PUBLIC_DIR = path.join(process.cwd(), 'public', 'captures');
 
 // Ensure capture dir exists
 if (!fs.existsSync(PUBLIC_DIR)) {
@@ -28,7 +28,7 @@ async function analyzeScreen() {
     
     // 2. Read as base64 for LLM
     const bitmap = fs.readFileSync(filepath);
-    const base64Image = new Buffer.from(bitmap).toString(''base64'');
+    const base64Image = new Buffer.from(bitmap).toString('base64');
     const dataUrl = `data:image/png;base64,${base64Image}`;
 
     // 3. Ask LLM (Multimodal)
@@ -62,7 +62,7 @@ async function analyzeScreen() {
         };
 
     } catch (err) {
-        console.error(''[Eyes] Analysis failed:'', err);
+        console.error('[Eyes] Analysis failed:', err);
         return { 
             url, 
             description: "I captured the screen, but my vision processing failed (LLM Error). Check if your model supports Image inputs."

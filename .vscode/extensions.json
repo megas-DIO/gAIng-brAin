@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+    "eamodio.gitlens",
+    "github.copilot",
+    "yzhang.markdown-all-in-one",
+    "bierner.markdown-mermaid",
+    "humao.rest-client"
+  ]
+}

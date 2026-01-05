@@ -1,11 +1,11 @@
-const fs = require(''fs'');
-const path = require(''path'');
-const Worker = require(''../core/worker'');
-const { callLlm } = require(''../services/llm'');
+const fs = require('fs');
+const path = require('path');
+const Worker = require('../core/worker');
+const { callLlm } = require('../services/llm');
 
 class Researcher extends Worker {
     constructor() {
-        super(''Claude'', ''Researcher'');
+        super('Claude', 'Researcher');
     }
 
     async execute(mission, step) {
@@ -32,22 +32,22 @@ class Researcher extends Worker {
 
         try {
             const response = await callLlm({
-                messages: [{ role: ''user'', content: prompt }],
+                messages: [{ role: 'user', content: prompt }],
                 temperature: 0.1
             });
 
             const contentStr = response.choices ? response.choices[0].message.content : response.response.content;
-            const plan = JSON.parse(contentStr.replace(/```json/g, '''').replace(/```/g, '''').trim());
+            const plan = JSON.parse(contentStr.replace(/```json/g, ').replace(/```/g, ').trim());
 
             switch(plan.action) {
-                case ''READ_FILE'': return await this.readFile(plan.target);
-                case ''LIST_DIR'': return await this.listDir(plan.target);
-                case ''WEB_SEARCH'': return await this.webSearch(plan.target);
+                case 'READ_FILE': return await this.readFile(plan.target);
+                case 'LIST_DIR': return await this.listDir(plan.target);
+                case 'WEB_SEARCH': return await this.webSearch(plan.target);
                 default: return { success: false, error: `Unsupported action: ${plan.action}` };
             }
 
         } catch (err) {
-            console.error(''[Researcher] Research failed:'', err);
+            console.error('[Researcher] Research failed:', err);
             return { success: false, error: err.message };
         }
     }
@@ -56,7 +56,7 @@ class Researcher extends Worker {
         try {
             const filePath = path.isAbsolute(target) ? target : path.resolve(process.cwd(), target);
             if (!fs.existsSync(filePath)) return { success: false, error: `File not found: ${target}` };
-            const content = fs.readFileSync(filePath, ''utf8'');
+            const content = fs.readFileSync(filePath, 'utf8');
             return { success: true, detail: `Read ${content.length} chars from ${target}.`, data: content };
         } catch (err) {
             return { success: false, error: err.message };
@@ -75,15 +75,27 @@ class Researcher extends Worker {
     }
 
     async webSearch(query) {
-        // Implementation for Web Search (Placeholder for Serper/Tavily)
-        // For v0, we use the LLM to provide its internal knowledge about the query.
-        const prompt = `Research Query: "${query}". Provide a concise summary of technical best practices or facts regarding this query.`;
-        const response = await callLlm({
-            messages: [{ role: ''user'', content: prompt }]
-        });
-        const info = response.choices ? response.choices[0].message.content : response.response.content;
-        return { success: true, detail: `Gathered intelligence on: ${query}`, data: info };
+        // Use Perplexity for real internet search capability
+        try {
+            const response = await callLlm({
+                provider: 'perplexity',
+                messages: [{ role: 'user', content: query }],
+                temperature: 0.2
+            });
+            const info = response.choices ? response.choices[0].message.content : response.response.content;
+            return { success: true, detail: `Gathered live intelligence on: ${query}`, data: info };
+        } catch (err) {
+            console.error('[Researcher] Perplexity search failed, falling back to internal LLM:', err);
+            // Fallback to default LLM if Perplexity fails
+            const prompt = `Research Query: "${query}". Provide a concise summary of technical best practices or facts regarding this query.`;
+            const response = await callLlm({
+                messages: [{ role: 'user', content: prompt }]
+            });
+            const info = response.choices ? response.choices[0].message.content : response.response.content;
+            return { success: true, detail: `Gathered internal intelligence on: ${query}`, data: info };
+        }
     }
 }
 
 module.exports = new Researcher();
+

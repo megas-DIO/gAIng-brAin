@@ -12,6 +12,15 @@ A collective memory database for AI friends. This project provides a simple API 
     *   `NGROK_AUTHTOKEN`: Your ngrok authtoken (if `ENABLE_NGROK` is true).
     *   `ENABLE_NGROK`: Set to `1` to enable ngrok tunneling, or `0` to disable.
     *   `GAING_SHARED_TOKEN`: Deprecated. Use Supabase Auth bearer tokens instead.
+    *   `LLM_PROVIDER`: Optional. Set to `openai`, `azure`, or `grok` to enable `/llm/*` endpoints.
+    *   `OPENAI_API_KEY`: Required if `LLM_PROVIDER=openai`.
+    *   `OPENAI_BASE_URL`: Optional override for OpenAI base URL (default `https://api.openai.com/v1`).
+    *   `OPENAI_MODEL`: Optional default model for OpenAI (default `gpt-4o-mini`).
+    *   `GROK_API_KEY`: Required if `LLM_PROVIDER=grok`.
+    *   `AZURE_OPENAI_API_KEY`: Required if `LLM_PROVIDER=azure`.
+    *   `AZURE_OPENAI_ENDPOINT`: Required if `LLM_PROVIDER=azure` (e.g., `https://<resource>.openai.azure.com`).
+    *   `AZURE_OPENAI_DEPLOYMENT`: Required if `LLM_PROVIDER=azure` (your deployment name).
+    *   `AZURE_OPENAI_API_VERSION`: Optional API version (default `2024-06-01`).
 
 2.  **Supabase Database Setup**:
     *   Set up your Supabase project.
@@ -67,7 +76,7 @@ A collective memory database for AI friends. This project provides a simple API 
 All endpoints require a Supabase Auth bearer token:
 `Authorization: Bearer <access_token>`
 
-*   **`GET /`**
+*   **`GET /health`**
     *   Health check.
     *   Returns `{ ok: true, message: 'gAIng brain online' }`.
 
@@ -107,6 +116,15 @@ All endpoints require a Supabase Auth bearer token:
     *   List only the names of registered members.
     *   Returns a plain text string of comma-separated names.
 
+*   **`GET /llm/status`**
+    *   Returns LLM provider readiness and missing env vars.
+    *   Requires `LLM_PROVIDER` configuration.
+
+*   **`POST /llm/chat`**
+    *   Proxy chat completions to OpenAI or Azure OpenAI (BYOK).
+    *   **Body**: `{ messages: [{ role: "user", content: "hi" }], model?: "string", temperature?: 0.2, max_tokens?: 200 }`
+    *   Returns `{ ok: true, provider, response, raw }`.
+
 *   **`POST /addMemory`**
     *   Add a memory for a specific user.
     *   **Body**: `{ content: "string", tags: ["string"], metadata: { "key": "value" } }`
@@ -117,3 +135,35 @@ All endpoints require a Supabase Auth bearer token:
     *   Search memories.
     *   **Query Parameters**: `q` (search term).
     *   Returns `{ ok: true, results: [ ... ] }`.
+
+## Automation
+
+Use these scripts to keep the local brain always-on and sync a local archive from Supabase.
+
+- Start server on login:
+  - powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\register-startup-tasks.ps1
+- Optional ngrok task: 
+  - powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\register-startup-tasks.ps1 -EnableNgrokTask
+- Remove tasks:
+  - powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\unregister-startup-tasks.ps1
+
+Local archive export:
+- powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\sync-archive.ps1
+
+Two-way sync at login:
+- register-startup-tasks.ps1 also creates the gAIngBrain-TwoWaySync task
+
+Local two-way sync (full throttle):
+- Initialize local DB:
+  - npm run init:local-db
+- Ensure Supabase has updated_at triggers:
+  - Run supabase\\updated_at.sql in your Supabase SQL editor
+- Sync both directions:
+  - npm run sync:two-way
+  - or: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\sync-two-way.ps1
+
+Notes:
+- The server uses Supabase as the source of truth; the archive is a local snapshot for backup/review.
+- Two-way sync uses updated_at; latest timestamp wins and overwrites the other side.
+- If ENABLE_NGROK=1 and NGROK_AUTHTOKEN is set, the server can start ngrok internally; the separate ngrok task is optional.
+

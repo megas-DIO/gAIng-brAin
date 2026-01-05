@@ -1,16 +1,16 @@
-const { Memory } = require(''mem0ai'');
-const config = require(''../config/env'');
+const { MemoryClient } = require('mem0ai');
+const config = require('../config/env');
 
 class DeepMemory {
     constructor() {
         if (config.MEM0_API_KEY) {
-            this.client = new Memory({
+            this.client = new MemoryClient({
                 apiKey: config.MEM0_API_KEY
             });
-            this.userId = config.MEM0_USER_ID || ''user_default'';
-            console.log(''[Mem0] Deep Memory initialized.'');
+            this.userId = config.MEM0_USER_ID || 'user_default';
+            console.log('[Mem0] Deep Memory initialized.');
         } else {
-            console.warn(''[Mem0] No API Key found. Deep Memory disabled.'');
+            console.warn('[Mem0] No API Key found. Deep Memory disabled.');
             this.client = null;
         }
     }
@@ -19,9 +19,9 @@ class DeepMemory {
         if (!this.client) return;
         try {
             await this.client.add(text, { user_id: this.userId, metadata });
-            console.log(''[Mem0] Memory Stored.'');
+            console.log('[Mem0] Memory Stored.');
         } catch (err) {
-            console.error(''[Mem0] Add Failed:'', err);
+            console.error('[Mem0] Add Failed:', err);
         }
     }
 
@@ -31,7 +31,7 @@ class DeepMemory {
             const results = await this.client.search(query, { user_id: this.userId, limit });
             return results.map(r => r.memory);
         } catch (err) {
-            console.error(''[Mem0] Search Failed:'', err);
+            console.error('[Mem0] Search Failed:', err);
             return [];
         }
     }

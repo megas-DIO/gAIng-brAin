@@ -5,13 +5,13 @@ class Worker {
     }
 
     /**
-     * Execute the worker''s task.
+     * Execute the worker's task.
      * @param {Object} mission - The Mission object
      * @param {Object} step - The specific step object
      * @returns {Promise<Object>} - The output result
      */
     async execute(mission, step) {
-        throw new Error(''Worker.execute() must be implemented'');
+        throw new Error('Worker.execute() must be implemented');
     }
 
     /**
@@ -25,3 +25,4 @@ class Worker {
 }
 
 module.exports = Worker;
+

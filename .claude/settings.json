@@ -1,0 +1,30 @@
+﻿{
+    "behavior":  {
+                     "confirmations":  "minimal",
+                     "autonomy":  "high",
+                     "peakMode":  true
+                 },
+    "context":  {
+                    "workingDirectory":  "C:\\Users\\mega_\\gAIng-Brain",
+                    "autoLoadFiles":  [
+                                          "CLAUDE.md",
+                                          "EIDOLON.md",
+                                          "log.md"
+                                      ]
+                },
+    "permissions":  {
+                        "deny":  [
+                                     "Bash(rm -rf /)",
+                                     "Bash(*format*)",
+                                     "Bash(*del /s /q*)"
+                                 ],
+                        "allow":  [
+                                      "Bash(*)",
+                                      "Read(C:/Users/mega_/**)",
+                                      "Edit(C:/Users/mega_/**)",
+                                      "Write(C:/Users/mega_/**)",
+                                      "Glob(**)",
+                                      "Grep(**)"
+                                  ]
+                    }
+}

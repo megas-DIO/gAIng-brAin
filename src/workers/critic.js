@@ -1,9 +1,9 @@
-const Worker = require(''../core/worker'');
-const { callLlm } = require(''../services/llm'');
+const Worker = require('../core/worker');
+const { callLlm } = require('../services/llm');
 
 class Critic extends Worker {
     constructor() {
-        super(''Claude'', ''Critic'');
+        super('Claude', 'Critic');
     }
 
     async execute(mission, step) {
@@ -30,12 +30,12 @@ class Critic extends Worker {
 
         try {
             const response = await callLlm({
-                messages: [{ role: ''user'', content: prompt }],
+                messages: [{ role: 'user', content: prompt }],
                 temperature: 0.1
             });
 
             const contentStr = response.choices ? response.choices[0].message.content : response.response.content;
-            const critique = JSON.parse(contentStr.replace(/```json/g, '''').replace(/```/g, '''').trim());
+            const critique = JSON.parse(contentStr.replace(/```json/g, '').replace(/```/g, '').trim());
 
             return { 
                 success: true, // The critique itself succeeded
@@ -43,7 +43,7 @@ class Critic extends Worker {
             };
 
         } catch (err) {
-            console.error(''[Critic] Review failed:'', err);
+            console.error('[Critic] Review failed:', err);
             return { success: false, error: err.message };
         }
     }

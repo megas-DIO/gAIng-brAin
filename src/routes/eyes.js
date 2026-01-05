@@ -1,9 +1,9 @@
-const express = require(''express'');
+const express = require('express');
 const router = express.Router();
-const { captureScreen, analyzeScreen } = require(''../services/eyes'');
+const { captureScreen, analyzeScreen } = require('../services/eyes');
 
 // Just capture
-router.post(''/capture'', async (req, res) => {
+router.post('/capture', async (req, res) => {
     try {
         const result = await captureScreen();
         res.json({ success: true, ...result });
@@ -13,7 +13,7 @@ router.post(''/capture'', async (req, res) => {
 });
 
 // Capture and Analyze
-router.post(''/analyze'', async (req, res) => {
+router.post('/analyze', async (req, res) => {
     try {
         const result = await analyzeScreen();
         res.json({ success: true, ...result });
