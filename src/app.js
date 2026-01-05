@@ -17,6 +17,7 @@ const missionRoutes = require('./routes/mission');
 const voiceRoutes = require('./routes/voice');
 const eyesRoutes = require('./routes/eyes');
 const earsRoutes = require('./routes/ears');
+const analyticsRoutes = require('./routes/analytics');
 
 // CORS - allow configured origins or all in dev
 const corsOptions = {
@@ -53,6 +54,7 @@ app.use('/mission', missionRoutes);
 app.use('/voice', voiceRoutes);
 app.use('/eyes', eyesRoutes);
 app.use('/ears', earsRoutes);
+app.use('/analytics', analyticsRoutes);
 app.use('/captures', express.static('public/captures'));
 
 module.exports = app;

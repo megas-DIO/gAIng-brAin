@@ -38,7 +38,11 @@
         "worker:gemini": "node src/agent-worker.js gemini",
         "worker:codex": "node src/agent-worker.js codex",
         "safa": "node src/safa-telegram-bot.js",
-        "safa:bot": "node src/safa-telegram-bot.js"
+        "safa:bot": "node src/safa-telegram-bot.js",
+        "omega": "bash scripts/start-omega.sh",
+        "omega:setup": "bash scripts/setup-frontend.sh",
+        "frontend": "cd frontend && npm run dev",
+        "frontend:build": "cd frontend && npm run build"
     },
     "keywords": [
         "ai",
