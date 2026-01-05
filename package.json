@@ -40,7 +40,11 @@
         "safa": "node src/safa-telegram-bot.js",
         "safa:bot": "node src/safa-telegram-bot.js",
         "omega": "bash scripts/start-omega.sh",
+        "omega:win": "powershell -ExecutionPolicy Bypass -File scripts/start-omega.ps1",
         "omega:setup": "bash scripts/setup-frontend.sh",
+        "omega:setup:win": "powershell -ExecutionPolicy Bypass -File scripts/setup-frontend.ps1",
+        "omega:doctor": "node tools/omega-doctor.mjs",
+        "security:scan-bidi": "node tools/scan-bidi.mjs",
         "frontend": "cd frontend && npm run dev",
         "frontend:build": "cd frontend && npm run build"
     },

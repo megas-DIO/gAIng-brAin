@@ -19,6 +19,22 @@ const eyesRoutes = require('./routes/eyes');
 const earsRoutes = require('./routes/ears');
 const analyticsRoutes = require('./routes/analytics');
 
+// Consciousness Kernel
+const { ConsciousnessKernel } = require('./services/consciousnessKernel');
+const { createKernelRouter } = require('./routes/kernel');
+
+// Initialize and start Consciousness Kernel
+const kernel = new ConsciousnessKernel();
+kernel.start();
+
+// Log kernel events for debugging
+kernel.on('mode_changed', (evt) => {
+  console.log(`[Kernel] Mode changed: ${evt.payload.mode}`);
+});
+kernel.on('reflection', (evt) => {
+  console.log(`[Kernel] Reflection: ${evt.payload.recommendation}`);
+});
+
 // CORS - allow configured origins or all in dev
 const corsOptions = {
     origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : '*',
@@ -55,6 +71,7 @@ app.use('/voice', voiceRoutes);
 app.use('/eyes', eyesRoutes);
 app.use('/ears', earsRoutes);
 app.use('/analytics', analyticsRoutes);
+app.use('/api/kernel', createKernelRouter(kernel));
 app.use('/captures', express.static('public/captures'));
 
 module.exports = app;
