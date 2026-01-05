@@ -1,3 +1,13 @@
+const { webcrypto } = require('crypto');
+
+// mem0ai's telemetry assumes a browser-like window; provide a minimal shim in Node.
+if (typeof global.window === 'undefined') {
+    global.window = {
+        crypto: globalThis.crypto || webcrypto,
+        navigator: { userAgent: 'node' }
+    };
+}
+
 const { MemoryClient } = require('mem0ai');
 const config = require('../config/env');
 

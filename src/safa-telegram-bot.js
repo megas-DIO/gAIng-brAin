@@ -58,7 +58,7 @@ async function telegramRequest(method, params = {}) {
                 'Content-Length': Buffer.byteLength(data)
             }
         }, (res) => {
-            let body = ';
+            let body = '';
             res.on('data', chunk => body += chunk);
             res.on('end', () => {
                 try {
@@ -77,12 +77,42 @@ async function telegramRequest(method, params = {}) {
 }
 
 async function sendMessage(chatId, text, options = {}) {
-    return telegramRequest('sendMessage', {
-        chat_id: chatId,
-        text,
-        parse_mode: 'Markdown',
-        ...options
-    });
+    const MAX_LENGTH = 4000; // Leave buffer for safety
+    
+    if (text.length <= MAX_LENGTH) {
+        return telegramRequest('sendMessage', {
+            chat_id: chatId,
+            text,
+            parse_mode: 'Markdown',
+            ...options
+        });
+    }
+
+    // Split into chunks
+    const chunks = [];
+    for (let i = 0; i < text.length; i += MAX_LENGTH) {
+        chunks.push(text.slice(i, i + MAX_LENGTH));
+    }
+
+    let lastResult;
+    for (const chunk of chunks) {
+        lastResult = await telegramRequest('sendMessage', {
+            chat_id: chatId,
+            text: chunk,
+            parse_mode: 'Markdown',
+            ...options
+        });
+        
+        if (!lastResult || !lastResult.ok) {
+            console.error('Failed to send message chunk:', lastResult);
+            return lastResult; // Stop if a chunk fails
+        }
+        
+        // Small delay to ensure order and respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    return lastResult;
 }
 
 async function brainRequest(endpoint, method = 'GET', body = null) {
@@ -103,7 +133,7 @@ async function brainRequest(endpoint, method = 'GET', body = null) {
         };
 
         const req = lib.request(options, (res) => {
-            let data = ';
+            let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
                 try {
@@ -194,7 +224,7 @@ async function transcribeVoice(fileId) {
                     ...form.getHeaders()
                 }
             }, (res) => {
-                let data = ';
+                let data = '';
                 res.on('data', chunk => data += chunk);
                 res.on('end', () => resolve(JSON.parse(data)));
             });
@@ -294,7 +324,7 @@ async function handleMessage(message) {
                     logToBlock(`${priority.toUpperCase()} task from ${username}: ${taskText}`);
                     await sendMessage(chatId,
                         `*${priority.toUpperCase()} Task Queued*\n\n` +
-                        `"${taskText.slice(0, 100)}${taskText.length > 100 ? '...' : '}"\n\n` +
+                        `"${taskText.slice(0, 100)}${taskText.length > 100 ? '...' : '"'}\n\n` +
                         `ID: \`${hiResult.task.id.slice(0, 8)}...\``
                     );
                 } else {
@@ -326,7 +356,7 @@ async function handleMessage(message) {
             logToBlock(`Voice task from ${username}: ${text}`);
             await sendMessage(chatId,
                 `*Task Queued*\n\n` +
-                `"${text.slice(0, 100)}${text.length > 100 ? '...' : '}"\n\n` +
+                `"${text.slice(0, 100)}${text.length > 100 ? '...' : '"'}\n\n` +
                 `Status: ${result.task.status}\n` +
                 `ID: \`${result.task.id.slice(0, 8)}...\``
             );
@@ -351,7 +381,7 @@ async function handleMessage(message) {
             logToBlock(`Task from ${username}: ${text}`);
             await sendMessage(chatId,
                 `*Task Queued*\n\n` +
-                `"${text.slice(0, 100)}${text.length > 100 ? '...' : '}"\n\n` +
+                `"${text.slice(0, 100)}${text.length > 100 ? '...' : '"'}\n\n` +
                 `Status: ${result.task.status}\n` +
                 `${result.message}\n\n` +
                 `ID: \`${result.task.id.slice(0, 8)}...\``
