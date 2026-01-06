@@ -295,10 +295,17 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
         isError: true
       };
     }
-    const results = await queryMemories(parsed.data);
-    return {
-      content: [{ type: "text", text: JSON.stringify({ results }) }]
-    };
+    try {
+      const results = await queryMemories(parsed.data);
+      return {
+        content: [{ type: "text", text: JSON.stringify({ results }) }]
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ error: error.message }) }],
+        isError: true
+      };
+    }
   }
 
   if (request.params.name === "brain_upsert") {
@@ -311,10 +318,17 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
         isError: true
       };
     }
-    const { id } = await upsertMemory(parsed.data);
-    return {
-      content: [{ type: "text", text: JSON.stringify({ ok: true, id }) }]
-    };
+    try {
+      const { id } = await upsertMemory(parsed.data);
+      return {
+        content: [{ type: "text", text: JSON.stringify({ ok: true, id }) }]
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ error: error.message }) }],
+        isError: true
+      };
+    }
   }
 
   return {
