@@ -1,7 +1,6 @@
 {
     "dependencies": {
         "@ngrok/ngrok": "^1.7.0",
-        "@ngrok/ngrok-win32-x64-msvc": "^1.7.0",
         "@openai/agents-realtime": "^0.3.7",
         "@supabase/supabase-js": "^2.89.0",
         "cors": "^2.8.5",
