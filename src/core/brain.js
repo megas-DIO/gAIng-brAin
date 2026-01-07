@@ -3,16 +3,57 @@ const blackboard = require('../services/blackboard');
 const Mission = require('./mission');
 const workers = require('../workers');
 
+// VIBRANIUM Phase 2: The Soul
+const { getVectorMemory } = require('../services/vectorMemory');
+const { getThoughtStream } = require('../services/thoughtStream');
+const { getDropWatcher } = require('../services/dropWatcher');
+
 class Brain {
     constructor() {
         this.isProcessing = false;
         this.taskQueue = [];
         this.activeMission = null;
+
+        // Phase 2: The Soul
+        this.vectorMemory = null;
+        this.stream = null;
+        this.dropWatcher = null;
     }
 
     async awaken() {
         console.log('[Brain] Awakening...');
         blackboard.init();
+
+        // ====================================================================
+        // VIBRANIUM Phase 2: Initialize The Soul
+        // ====================================================================
+        console.log('[Brain] Initializing The Soul (Phase 2)...');
+
+        // Vector Memory - Long-term storage
+        this.vectorMemory = getVectorMemory();
+        const memStats = this.vectorMemory.getStats();
+        console.log(`[Brain] Vector Memory: ${memStats.total_memories} memories, ${memStats.total_chunks} chunks`);
+
+        // Thought Stream - Real-time consciousness
+        this.stream = getThoughtStream();
+        const streamStats = this.stream.getStats();
+        console.log(`[Brain] Thought Stream: ${streamStats.total} thoughts`);
+
+        // Drop Watcher - File processing
+        this.dropWatcher = getDropWatcher();
+        this.dropWatcher.start();
+        console.log(`[Brain] Drop Watcher: Active`);
+
+        // Record awakening
+        this.stream.think('Vision awakening...', { phase: 2 });
+        await this.vectorMemory.storeMemory('Vision awakened', {
+            metadata: { event: 'startup', phase: 2 },
+            source: 'system',
+            type: 'event',
+            importance: 8,
+            tags: ['startup', 'vibranium']
+        });
+
         blackboard.broadcast('AWAKE', 'Vision is online. Listening for signals.');
 
         // Bind Signals
@@ -20,6 +61,7 @@ class Brain {
         blackboard.on('user_msg', (msg) => this.handleThought(msg));
 
         console.log('[Brain] Core logic active. Waiting for input.');
+        this.stream.success('Brain fully operational', { systems: ['blackboard', 'vectorMemory', 'stream', 'dropWatcher'] });
     }
 
     async handleCommand(command) {
