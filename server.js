@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
@@ -6,13 +9,21 @@ import helmet from "helmet";
 import morgan from "morgan";
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
-import { z } from "zod";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
+import {
+  assignmentSchema,
+  querySchema,
+  roleCreateSchema,
+  roleUpdateSchema,
+  upsertSchema,
+  workerCreateSchema,
+  workerUpdateSchema
+} from "./src/schemas.js";
 
 dotenv.config();
 
@@ -104,23 +115,21 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-const upsertSchema = z.object({
-  id: z.string().uuid().optional(),
-  author: z.string().min(1),
-  kind: z.enum(["fact", "decision", "task", "note", "preference", "prompt", "warning"]),
-  title: z.string().optional().nullable(),
-  content: z.string().min(1),
-  tags: z.array(z.string()).optional().nullable(),
-  confidence: z.number().min(0).max(1).optional().nullable(),
-  pinned: z.boolean().optional().nullable()
-});
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const mcpConfigPath = path.join(__dirname, "mcp", "config.json");
+let mcpConfig = {
+  name: "gaing-brain",
+  version: "1.0.0",
+  tools: []
+};
 
-const querySchema = z.object({
-  query: z.string().min(1),
-  top_k: z.number().int().min(1).max(200).optional(),
-  threshold: z.number().min(0).max(1).optional(),
-  tags: z.array(z.string()).optional()
-});
+if (fs.existsSync(mcpConfigPath)) {
+  try {
+    mcpConfig = JSON.parse(fs.readFileSync(mcpConfigPath, "utf-8"));
+  } catch (error) {
+    console.warn("Failed to load MCP config:", error.message);
+  }
+}
 
 const validateBody = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
@@ -210,8 +219,114 @@ const queryMemories = async ({ query, top_k = 10, threshold = 0.78, tags }) => {
   return data ?? [];
 };
 
+const getMetricsSnapshot = async () => {
+  const [{ count: memoryCount, error: memoryError }, { count: workerCount, error: workerError }, { count: roleCount, error: roleError }] =
+    await Promise.all([
+      supabase.from("memories").select("id", { count: "exact", head: true }),
+      supabase.from("workers").select("id", { count: "exact", head: true }),
+      supabase.from("roles").select("id", { count: "exact", head: true })
+    ]);
+
+  if (memoryError) {
+    throw memoryError;
+  }
+  if (workerError) {
+    throw workerError;
+  }
+  if (roleError) {
+    throw roleError;
+  }
+
+  return {
+    memories: memoryCount ?? 0,
+    workers: workerCount ?? 0,
+    roles: roleCount ?? 0
+  };
+};
+
+const getWorkerRoles = async (workerId) => {
+  const { data, error } = await supabase
+    .from("worker_role_assignments")
+    .select("role_id, roles(id, name, description, capabilities)")
+    .eq("worker_id", workerId);
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).map((row) => row.roles).filter(Boolean);
+};
+
+const listWorkers = async () => {
+  const { data, error } = await supabase
+    .from("workers")
+    .select("id, name, status, capabilities, created_at, updated_at")
+    .order("created_at", { ascending: false });
+  if (error) {
+    throw error;
+  }
+  const workers = data ?? [];
+  return Promise.all(
+    workers.map(async (worker) => ({
+      ...worker,
+      roles: await getWorkerRoles(worker.id)
+    }))
+  );
+};
+
+const fetchWorker = async (workerId) => {
+  const { data, error } = await supabase
+    .from("workers")
+    .select("id, name, status, capabilities, created_at, updated_at")
+    .eq("id", workerId)
+    .single();
+  if (error) {
+    throw error;
+  }
+  return {
+    ...data,
+    roles: await getWorkerRoles(workerId)
+  };
+};
+
+const listRoles = async () => {
+  const { data, error } = await supabase
+    .from("roles")
+    .select("id, name, description, capabilities, created_at, updated_at")
+    .order("created_at", { ascending: false });
+  if (error) {
+    throw error;
+  }
+  return data ?? [];
+};
+
 app.get("/health", (req, res) => {
   res.json({ ok: true });
+});
+
+app.get("/status", (req, res) => {
+  res.json({
+    ok: true,
+    service: {
+      name: mcpConfig.name ?? "gaing-brain",
+      version: mcpConfig.version ?? "1.0.0"
+    },
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    environment: {
+      embedProvider: EMBED_PROVIDER,
+      hasOpenAI: Boolean(OPENAI_API_KEY),
+      allowlistedHosts: allowedHosts,
+      allowlistedOrigins: allowedOrigins
+    }
+  });
+});
+
+app.get("/metrics", requireAuth, async (req, res) => {
+  try {
+    const metrics = await getMetricsSnapshot();
+    res.json({ metrics });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post("/upsert", requireAuth, validateBody(upsertSchema), async (req, res) => {
@@ -232,10 +347,223 @@ app.post("/query", requireAuth, validateBody(querySchema), async (req, res) => {
   }
 });
 
+app.get("/roles", requireAuth, async (req, res) => {
+  try {
+    const roles = await listRoles();
+    res.json({ roles });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/roles", requireAuth, validateBody(roleCreateSchema), async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("roles")
+      .insert({
+        name: req.validatedBody.name,
+        description: req.validatedBody.description ?? null,
+        capabilities: req.validatedBody.capabilities ?? []
+      })
+      .select("id, name, description, capabilities, created_at, updated_at")
+      .single();
+    if (error) {
+      throw error;
+    }
+    res.status(201).json({ role: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch("/roles/:id", requireAuth, validateBody(roleUpdateSchema), async (req, res) => {
+  try {
+    const updates = {};
+    if (req.validatedBody.name !== undefined) {
+      updates.name = req.validatedBody.name;
+    }
+    if (req.validatedBody.description !== undefined) {
+      updates.description = req.validatedBody.description ?? null;
+    }
+    if (req.validatedBody.capabilities !== undefined) {
+      updates.capabilities = req.validatedBody.capabilities ?? [];
+    }
+    const { data, error } = await supabase
+      .from("roles")
+      .update(updates)
+      .eq("id", req.params.id)
+      .select("id, name, description, capabilities, created_at, updated_at")
+      .single();
+    if (error) {
+      throw error;
+    }
+    res.json({ role: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/roles/:id", requireAuth, async (req, res) => {
+  try {
+    const { error } = await supabase.from("roles").delete().eq("id", req.params.id);
+    if (error) {
+      throw error;
+    }
+    res.status(204).end();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/workers", requireAuth, async (req, res) => {
+  try {
+    const workers = await listWorkers();
+    res.json({ workers });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/workers", requireAuth, validateBody(workerCreateSchema), async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("workers")
+      .insert({
+        name: req.validatedBody.name,
+        status: req.validatedBody.status ?? "idle",
+        capabilities: req.validatedBody.capabilities ?? []
+      })
+      .select("id, name, status, capabilities, created_at, updated_at")
+      .single();
+    if (error) {
+      throw error;
+    }
+    const worker = {
+      ...data,
+      roles: []
+    };
+    res.status(201).json({ worker });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/workers/:id", requireAuth, async (req, res) => {
+  try {
+    const worker = await fetchWorker(req.params.id);
+    res.json({ worker });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch("/workers/:id", requireAuth, validateBody(workerUpdateSchema), async (req, res) => {
+  try {
+    const updates = {};
+    if (req.validatedBody.name !== undefined) {
+      updates.name = req.validatedBody.name;
+    }
+    if (req.validatedBody.status !== undefined) {
+      updates.status = req.validatedBody.status;
+    }
+    if (req.validatedBody.capabilities !== undefined) {
+      updates.capabilities = req.validatedBody.capabilities ?? [];
+    }
+    const { data, error } = await supabase
+      .from("workers")
+      .update(updates)
+      .eq("id", req.params.id)
+      .select("id, name, status, capabilities, created_at, updated_at")
+      .single();
+    if (error) {
+      throw error;
+    }
+    const worker = {
+      ...data,
+      roles: await getWorkerRoles(req.params.id)
+    };
+    res.json({ worker });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/workers/:id/roles", requireAuth, validateBody(assignmentSchema), async (req, res) => {
+  try {
+    const payload = req.validatedBody.roleIds.map((roleId) => ({
+      worker_id: req.params.id,
+      role_id: roleId
+    }));
+    const { error } = await supabase.from("worker_role_assignments").insert(payload);
+    if (error) {
+      throw error;
+    }
+    const worker = await fetchWorker(req.params.id);
+    res.json({ worker });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/workers/:id/roles/:roleId", requireAuth, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from("worker_role_assignments")
+      .delete()
+      .eq("worker_id", req.params.id)
+      .eq("role_id", req.params.roleId);
+    if (error) {
+      throw error;
+    }
+    const worker = await fetchWorker(req.params.id);
+    res.json({ worker });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const mcpTools = mcpConfig.tools ?? [
+  {
+    name: "brain_query",
+    description: "Query stored memories.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        top_k: { type: "integer", minimum: 1, maximum: 200 },
+        threshold: { type: "number", minimum: 0, maximum: 1 },
+        tags: { type: "array", items: { type: "string" } }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "brain_upsert",
+    description: "Upsert a memory entry.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        author: { type: "string" },
+        kind: {
+          type: "string",
+          enum: ["fact", "decision", "task", "note", "preference", "prompt", "warning"]
+        },
+        title: { type: "string" },
+        content: { type: "string" },
+        tags: { type: "array", items: { type: "string" } },
+        confidence: { type: "number", minimum: 0, maximum: 1 },
+        pinned: { type: "boolean" }
+      },
+      required: ["author", "kind", "content"]
+    }
+  }
+];
+
 const mcpServer = new Server(
   {
-    name: "gaing-brain",
-    version: "1.0.0"
+    name: mcpConfig.name ?? "gaing-brain",
+    version: mcpConfig.version ?? "1.0.0"
   },
   {
     capabilities: {
@@ -245,43 +573,7 @@ const mcpServer = new Server(
 );
 
 mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "brain_query",
-      description: "Query stored memories.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          query: { type: "string" },
-          top_k: { type: "integer", minimum: 1, maximum: 200 },
-          threshold: { type: "number", minimum: 0, maximum: 1 },
-          tags: { type: "array", items: { type: "string" } }
-        },
-        required: ["query"]
-      }
-    },
-    {
-      name: "brain_upsert",
-      description: "Upsert a memory entry.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          author: { type: "string" },
-          kind: {
-            type: "string",
-            enum: ["fact", "decision", "task", "note", "preference", "prompt", "warning"]
-          },
-          title: { type: "string" },
-          content: { type: "string" },
-          tags: { type: "array", items: { type: "string" } },
-          confidence: { type: "number", minimum: 0, maximum: 1 },
-          pinned: { type: "boolean" }
-        },
-        required: ["author", "kind", "content"]
-      }
-    }
-  ]
+  tools: mcpTools
 }));
 
 mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -338,6 +630,10 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 const mcpTransports = new Map();
+
+app.get("/mcp/info", requireAuth, (req, res) => {
+  res.json(mcpConfig);
+});
 
 app.all("/mcp", requireAuth, async (req, res) => {
   const sessionId = req.headers["mcp-session-id"] || "";

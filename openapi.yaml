@@ -24,6 +24,28 @@ paths:
                 properties:
                   ok:
                     type: boolean
+  /status:
+    get:
+      summary: Status snapshot
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /metrics:
+    get:
+      summary: Metrics snapshot
+      security:
+        - BrainToken: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
   /upsert:
     post:
       summary: Upsert a memory
@@ -107,3 +129,188 @@ paths:
                     type: array
                     items:
                       type: object
+  /roles:
+    get:
+      summary: List roles
+      security:
+        - BrainToken: []
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: Create role
+      security:
+        - BrainToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: Created
+  /roles/{id}:
+    patch:
+      summary: Update role
+      security:
+        - BrainToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+    delete:
+      summary: Delete role
+      security:
+        - BrainToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+  /workers:
+    get:
+      summary: List workers
+      security:
+        - BrainToken: []
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: Create worker
+      security:
+        - BrainToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                status:
+                  type: string
+                  enum: [idle, busy, offline, error]
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: Created
+  /workers/{id}:
+    get:
+      summary: Get worker
+      security:
+        - BrainToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+    patch:
+      summary: Update worker
+      security:
+        - BrainToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+  /workers/{id}/roles:
+    post:
+      summary: Assign roles to worker
+      security:
+        - BrainToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - roleIds
+              properties:
+                roleIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: OK
+  /workers/{id}/roles/{roleId}:
+    delete:
+      summary: Remove role from worker
+      security:
+        - BrainToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /mcp/info:
+    get:
+      summary: MCP server info
+      security:
+        - BrainToken: []
+      responses:
+        "200":
+          description: OK
