@@ -1,4 +1,27 @@
+const path = require('path');
 require('dotenv').config();
+
+// ============================================================================
+// PROJECT VIBRANIUM: Portable Path Configuration
+// ============================================================================
+// Support for portable USB drive deployment ("The Phylactery")
+// Paths are derived from VISION_ROOT environment variable if set by WAKE scripts
+
+const VISION_ROOT = process.env.VISION_ROOT || path.resolve(__dirname, '../..');
+const VISION_DATA = process.env.VISION_DATA || path.join(VISION_ROOT, 'data');
+const VISION_DROP = process.env.VISION_DROP || path.join(VISION_ROOT, 'drop');
+const VISION_LOGS = process.env.VISION_LOGS || path.join(VISION_ROOT, 'logs');
+const VISION_CORE = process.env.VISION_CORE || path.join(VISION_ROOT, 'src');
+const VISION_BIN = process.env.VISION_BIN || path.join(VISION_ROOT, 'bin');
+
+// Detect if running in portable mode
+const IS_PORTABLE = !!process.env.VISION_ROOT;
+const IS_ONLINE = process.env.VISION_ONLINE !== 'false';
+const GPU_AVAILABLE = process.env.VISION_GPU_AVAILABLE || 'none';
+
+// ============================================================================
+// API Keys and Service Configuration
+// ============================================================================
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
@@ -23,6 +46,18 @@ const PORT = process.env.PORT || 8080;
 const supabaseKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
 
 module.exports = {
+  // Portable paths (VIBRANIUM)
+  VISION_ROOT,
+  VISION_DATA,
+  VISION_DROP,
+  VISION_LOGS,
+  VISION_CORE,
+  VISION_BIN,
+  IS_PORTABLE,
+  IS_ONLINE,
+  GPU_AVAILABLE,
+
+  // API Keys and Services
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY,

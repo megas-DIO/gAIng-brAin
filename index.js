@@ -73,8 +73,26 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 server.listen(PORT, async () => {
-  console.log("Express server listening on port " + PORT);
-  console.log("WebSocket endpoint: ws://localhost:" + PORT + "/ws?agent=<agent_name>");
+  const { IS_PORTABLE, VISION_ROOT, IS_ONLINE, GPU_AVAILABLE } = require('./src/config/env');
+
+  console.log("\n=======================================================================");
+  console.log("🧠 VISION BRAIN - AWAKENING");
+  console.log("=======================================================================");
+  console.log(`   Server: http://localhost:${PORT}`);
+  console.log(`   WebSocket: ws://localhost:${PORT}/ws?agent=<agent_name>`);
+
+  // VIBRANIUM Status
+  if (IS_PORTABLE) {
+    console.log("\n🛸 PROJECT VIBRANIUM: PORTABLE MODE ACTIVE");
+    console.log(`   Root: ${VISION_ROOT}`);
+    console.log(`   Mode: ${IS_ONLINE ? '🌐 Online' : '👻 Ghost (Offline)'}`);
+    console.log(`   GPU: ${GPU_AVAILABLE === 'nvidia' ? '✅ NVIDIA' : '❌ CPU Only'}`);
+  } else {
+    console.log("\n📍 Running in standard mode (not portable)");
+    console.log("   Tip: Use wake.sh or WAKE.bat for portable mode");
+  }
+
+  console.log("=======================================================================\n");
 
   // WAKE THE BRAIN
   brain.awaken();

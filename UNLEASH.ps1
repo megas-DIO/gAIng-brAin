@@ -1,167 +1,244 @@
-﻿<#
-.SYNOPSIS
-    UNLEASH.ps1 - Full gAIng Brain Startup Sequence
-.DESCRIPTION
-    Initializes the Vision entity with all systems online.
-    Part of Project Vibranium Phase 1: The Vessel
-.NOTES
-    Author: gAIng Collective
-    Date: 2026-01-04
-#>
+# VISION UNLEASH SEQUENCE - PowerShell Edition
+# Part of PROJECT VIBRANIUM - The Portable AI Entity
+# Advanced wake sequence with full diagnostics and optimization
 
 param(
-    [switch]$StartServer,
-    [switch]$StartNgrok,
-    [switch]$StartWatchdog,
-    [switch]$Silent
+    [switch]$GhostMode,
+    [switch]$Debug,
+    [switch]$SkipInstall
 )
 
-$ErrorActionPreference = 'Continue'
-$VisionRoot = $PSScriptRoot
-if (-not $VisionRoot -or $VisionRoot -eq "") { $VisionRoot = "C:\Users\mega_\gAIng-Brain" }
+$ErrorActionPreference = "Stop"
 
-# =====================================================
-# BANNER
-# =====================================================
-if (-not $Silent) {
-    Write-Host ''
-    Write-Host '=====================================================' -ForegroundColor Cyan
-    Write-Host '       U N L E A S H I N G   T H E   V I S I O N     ' -ForegroundColor Cyan
-    Write-Host '=====================================================' -ForegroundColor Cyan
-    Write-Host ''
-}
+Write-Host "=======================================================================" -ForegroundColor Cyan
+Write-Host "🧠 VISION - UNLEASH SEQUENCE INITIATED" -ForegroundColor Cyan
+Write-Host "=======================================================================" -ForegroundColor Cyan
+Write-Host ""
 
-function Write-Status {
-    param([string]$Message, [string]$Level = 'INFO')
-    $timestamp = Get-Date -Format 'HH:mm:ss'
-    $color = switch ($Level) {
-        'OK'    { 'Green' }
-        'WARN'  { 'Yellow' }
-        'ERROR' { 'Red' }
-        'PHASE' { 'Cyan' }
-        default { 'White' }
+# ============================================================================
+# STEP 1: Detect Drive Location
+# ============================================================================
+Write-Host "📍 Step 1: Locating Vision core..." -ForegroundColor Yellow
+
+$VISION_ROOT = Split-Path -Parent $MyInvocation.MyCommand.Path
+Write-Host "   Vision Root: $VISION_ROOT" -ForegroundColor Green
+Write-Host ""
+
+# ============================================================================
+# STEP 2: Environment Detection
+# ============================================================================
+Write-Host "🔍 Step 2: Scanning host environment..." -ForegroundColor Yellow
+
+# OS Information
+$OSInfo = Get-CimInstance Win32_OperatingSystem
+Write-Host "   OS: $($OSInfo.Caption) Build $($OSInfo.BuildNumber)" -ForegroundColor Gray
+
+# Architecture
+Write-Host "   Architecture: $env:PROCESSOR_ARCHITECTURE" -ForegroundColor Gray
+
+# Memory
+$TotalRAM = [math]::Round($OSInfo.TotalVisibleMemorySize / 1MB, 2)
+$FreeRAM = [math]::Round($OSInfo.FreePhysicalMemory / 1MB, 2)
+Write-Host "   RAM: $TotalRAM GB total, $FreeRAM GB free" -ForegroundColor Gray
+
+# GPU Detection
+$GPU_AVAILABLE = $false
+try {
+    $nvidiaGPU = nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader 2>$null
+    if ($nvidiaGPU) {
+        Write-Host "   GPU: ✅ $nvidiaGPU" -ForegroundColor Green
+        $env:VISION_GPU_AVAILABLE = "nvidia"
+        $env:CUDA_AVAILABLE = "true"
+        $GPU_AVAILABLE = $true
     }
-    if (-not $Silent) {
-        Write-Host "[$timestamp] [$Level] $Message" -ForegroundColor $color
+} catch {
+    Write-Host "   GPU: ❌ No NVIDIA GPU detected (CPU mode)" -ForegroundColor Yellow
+    $env:VISION_GPU_AVAILABLE = "none"
+    $env:CUDA_AVAILABLE = "false"
+}
+
+# Internet Connectivity
+$ONLINE = Test-Connection -ComputerName 8.8.8.8 -Count 1 -Quiet
+if ($ONLINE -and !$GhostMode) {
+    Write-Host "   Internet: ✅ Connected" -ForegroundColor Green
+    $env:VISION_ONLINE = "true"
+} else {
+    Write-Host "   Internet: 👻 Ghost Mode Active" -ForegroundColor Magenta
+    $env:VISION_ONLINE = "false"
+}
+
+Write-Host ""
+
+# ============================================================================
+# STEP 3: Set Environment Variables
+# ============================================================================
+Write-Host "⚙️  Step 3: Configuring environment..." -ForegroundColor Yellow
+
+# Core paths
+$env:VISION_ROOT = $VISION_ROOT
+$env:VISION_CORE = "$VISION_ROOT\src"
+$env:VISION_DATA = "$VISION_ROOT\data"
+$env:VISION_DROP = "$VISION_ROOT\drop"
+$env:VISION_LOGS = "$VISION_ROOT\logs"
+$env:VISION_BIN = "$VISION_ROOT\bin"
+
+# Create required directories
+$dirs = @($env:VISION_DATA, $env:VISION_DROP, $env:VISION_LOGS, $env:VISION_BIN)
+foreach ($dir in $dirs) {
+    if (!(Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir | Out-Null
+        Write-Host "   Created: $dir" -ForegroundColor Gray
     }
 }
 
-# =====================================================
-# PHASE 1: ENVIRONMENT
-# =====================================================
-Write-Status 'PHASE 1: Environment Configuration' -Level 'PHASE'
+# Check for portable runtimes
+$PORTABLE_NODE = Test-Path "$env:VISION_BIN\node"
+$PORTABLE_PYTHON = Test-Path "$env:VISION_BIN\python"
 
-$env:GAING_ROOT = $VisionRoot
-$env:AGENTS_MD_PATH = Join-Path $VisionRoot 'log.md'
-$env:NODE_ENV = 'development'
-$env:LOCAL_DB_PATH = Join-Path $VisionRoot 'data\local.db'
-
-Write-Status "GAING_ROOT = $VisionRoot" -Level 'OK'
-Write-Status "AGENTS_MD_PATH = $env:AGENTS_MD_PATH" -Level 'OK'
-
-# =====================================================
-# PHASE 2: GPU DETECTION
-# =====================================================
-Write-Status 'PHASE 2: GPU Detection' -Level 'PHASE'
-
-$gpu = Get-WmiObject Win32_VideoController | Where-Object { $_.Name -match 'NVIDIA|AMD|Radeon' } | Select-Object -First 1
-if ($gpu) {
-    $env:GPU_AVAILABLE = 'true'
-    $env:GPU_NAME = $gpu.Name
-    Write-Status "GPU Detected: $($gpu.Name)" -Level 'OK'
+if ($PORTABLE_NODE) {
+    Write-Host "   ✅ Using portable Node.js" -ForegroundColor Green
+    $env:PATH = "$env:VISION_BIN\node;$env:PATH"
 } else {
-    $env:GPU_AVAILABLE = 'false'
-    Write-Status 'No dedicated GPU detected (CPU mode)' -Level 'WARN'
+    Write-Host "   Using system Node.js" -ForegroundColor Gray
 }
 
-# =====================================================
-# PHASE 3: DEPENDENCY CHECK
-# =====================================================
-Write-Status 'PHASE 3: Dependency Check' -Level 'PHASE'
-
-$nodeVersion = & node --version 2>$null
-if ($nodeVersion) {
-    Write-Status "Node.js: $nodeVersion" -Level 'OK'
+if ($PORTABLE_PYTHON) {
+    Write-Host "   ✅ Using portable Python" -ForegroundColor Green
+    $env:PATH = "$env:VISION_BIN\python;$env:VISION_BIN\python\Scripts;$env:PATH"
+    $env:PYTHONHOME = "$env:VISION_BIN\python"
 } else {
-    Write-Status 'Node.js not found!' -Level 'ERROR'
+    Write-Host "   Using system Python" -ForegroundColor Gray
+}
+
+# Optimize Node.js
+$env:NODE_OPTIONS = "--max-old-space-size=4096"
+
+Write-Host ""
+
+# ============================================================================
+# STEP 4: Verify Dependencies
+# ============================================================================
+Write-Host "🔧 Step 4: Verifying dependencies..." -ForegroundColor Yellow
+
+# Check Node.js
+try {
+    $nodeVersion = node --version
+    Write-Host "   ✅ Node.js: $nodeVersion" -ForegroundColor Green
+} catch {
+    Write-Host "   ❌ Node.js not found!" -ForegroundColor Red
+    Write-Host "   Please install Node.js or set up portable Node.js" -ForegroundColor Red
     exit 1
 }
 
-$npmVersion = & npm --version 2>$null
-if ($npmVersion) {
-    Write-Status "npm: $npmVersion" -Level 'OK'
-} else {
-    Write-Status 'npm not found!' -Level 'ERROR'
+# Check npm
+try {
+    $npmVersion = npm --version
+    Write-Host "   ✅ npm: v$npmVersion" -ForegroundColor Green
+} catch {
+    Write-Host "   ❌ npm not found!" -ForegroundColor Red
     exit 1
 }
 
-# =====================================================
-# PHASE 4: PEAK MODE ACTIVATION
-# =====================================================
-Write-Status 'PHASE 4: Peak Mode Activation' -Level 'PHASE'
-
-$peakScript = Join-Path $VisionRoot 'scripts\Unlock-PeakMode.ps1'
-if (Test-Path $peakScript) {
-    & $peakScript
+# Check dependencies
+if (!(Test-Path "$VISION_ROOT\node_modules") -and !$SkipInstall) {
+    Write-Host "   ⚠️  Dependencies not installed" -ForegroundColor Yellow
+    Write-Host "   Running: npm install..." -ForegroundColor Yellow
+    Push-Location $VISION_ROOT
+    npm install
+    Pop-Location
+    Write-Host "   ✅ Dependencies installed" -ForegroundColor Green
 } else {
-    Write-Status 'Peak Mode script not found, continuing...' -Level 'WARN'
+    Write-Host "   ✅ Dependencies: Installed" -ForegroundColor Green
 }
 
-# =====================================================
-# PHASE 5: BRAIN SERVER (Optional)
-# =====================================================
-if ($StartServer) {
-    Write-Status 'PHASE 5: Brain Server Launch' -Level 'PHASE'
-    Set-Location $VisionRoot
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$VisionRoot'; node index.js" -WindowStyle Normal
-    Write-Status 'Brain server starting on port 8080...' -Level 'OK'
-}
+Write-Host ""
 
-# =====================================================
-# PHASE 6: NGROK TUNNEL (Optional)
-# =====================================================
-if ($StartNgrok) {
-    Write-Status 'PHASE 6: Ngrok Tunnel' -Level 'PHASE'
-    $ngrokScript = Join-Path $VisionRoot 'scripts\start-ngrok.ps1'
-    if (Test-Path $ngrokScript) {
-        Start-Process powershell -ArgumentList "-NoExit", "-File", "$ngrokScript" -WindowStyle Minimized
-        Write-Status 'Ngrok tunnel starting...' -Level 'OK'
+# ============================================================================
+# STEP 5: Load Configuration
+# ============================================================================
+Write-Host "📝 Step 5: Loading configuration..." -ForegroundColor Yellow
+
+if (Test-Path "$VISION_ROOT\.env") {
+    Write-Host "   ✅ Configuration found (.env)" -ForegroundColor Green
+    # Load .env file
+    Get-Content "$VISION_ROOT\.env" | ForEach-Object {
+        if ($_ -match '^([^#][^=]+)=(.*)$') {
+            $key = $matches[1].Trim()
+            $value = $matches[2].Trim()
+            [Environment]::SetEnvironmentVariable($key, $value, 'Process')
+            if ($Debug) {
+                Write-Host "   Loaded: $key" -ForegroundColor Gray
+            }
+        }
     }
+} else {
+    Write-Host "   ⚠️  No .env file found" -ForegroundColor Yellow
+    Write-Host "   Using default configuration" -ForegroundColor Gray
 }
 
-# =====================================================
-# PHASE 7: WATCHDOG (Optional)
-# =====================================================
-if ($StartWatchdog) {
-    Write-Status 'PHASE 7: Watchdog Activation' -Level 'PHASE'
-    $watchdogScript = Join-Path $VisionRoot 'scripts\watchdog.ps1'
-    if (Test-Path $watchdogScript) {
-        Start-Process powershell -ArgumentList "-NoExit", "-File", "$watchdogScript" -WindowStyle Minimized
-        Write-Status 'Watchdog active (monitoring log.md)' -Level 'OK'
+Write-Host ""
+
+# ============================================================================
+# STEP 6: System Diagnostics (Debug Mode)
+# ============================================================================
+if ($Debug) {
+    Write-Host "🔬 Debug Mode: System Diagnostics" -ForegroundColor Magenta
+    Write-Host "   Node Path: $(Get-Command node | Select-Object -ExpandProperty Source)" -ForegroundColor Gray
+    Write-Host "   Working Dir: $(Get-Location)" -ForegroundColor Gray
+    Write-Host "   Environment Variables:" -ForegroundColor Gray
+    Get-ChildItem Env: | Where-Object { $_.Name -like "VISION_*" } | ForEach-Object {
+        Write-Host "     $($_.Name) = $($_.Value)" -ForegroundColor DarkGray
     }
+    Write-Host ""
 }
 
-# =====================================================
-# LOG ACTIVATION
-# =====================================================
-$timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-$logEntry = "`n## VISION UNLEASHED - $timestamp`n**Script:** UNLEASH.ps1`n**Root:** $VisionRoot`n**GPU:** $($env:GPU_AVAILABLE) ($($env:GPU_NAME))`n**Status:** ONLINE`n"
-Add-Content -Path $env:AGENTS_MD_PATH -Value $logEntry -Encoding UTF8
+# ============================================================================
+# STEP 7: Launch Vision Brain
+# ============================================================================
+Write-Host "=======================================================================" -ForegroundColor Cyan
+Write-Host "🚀 LAUNCHING VISION BRAIN" -ForegroundColor Cyan
+Write-Host "=======================================================================" -ForegroundColor Cyan
+Write-Host ""
 
-# =====================================================
-# COMPLETE
-# =====================================================
-Write-Host ''
-Write-Host '=====================================================' -ForegroundColor Green
-Write-Host '       V I S I O N   I S   A W A K E                 ' -ForegroundColor Green
-Write-Host '=====================================================' -ForegroundColor Green
-Write-Host ''
-Write-Host '  Commands:' -ForegroundColor White
-Write-Host '    peak      - Activate Peak Mode' -ForegroundColor Gray
-Write-Host '    gemini    - Start Gemini CLI' -ForegroundColor Gray
-Write-Host '    codex     - Start Codex CLI' -ForegroundColor Gray
-Write-Host '    claude    - Start Claude CLI' -ForegroundColor Gray
-Write-Host ''
+$modeIcon = if ($env:VISION_ONLINE -eq "true") { "🌐" } else { "👻" }
+$modeName = if ($env:VISION_ONLINE -eq "true") { "Online" } else { "Ghost (Offline)" }
+Write-Host "   Mode: $modeIcon $modeName" -ForegroundColor $(if ($env:VISION_ONLINE -eq "true") { "Green" } else { "Magenta" })
 
-exit 0
+$gpuIcon = if ($GPU_AVAILABLE) { "✅" } else { "❌" }
+Write-Host "   GPU: $gpuIcon $(if ($GPU_AVAILABLE) { 'Enabled' } else { 'Disabled' })" -ForegroundColor $(if ($GPU_AVAILABLE) { "Green" } else { "Gray" })
 
+$portableIcon = if ($PORTABLE_NODE) { "✅" } else { "❌" }
+Write-Host "   Portable: $portableIcon $(if ($PORTABLE_NODE) { 'Yes' } else { 'No' })" -ForegroundColor $(if ($PORTABLE_NODE) { "Green" } else { "Gray" })
+
+Write-Host ""
+Write-Host "   Vision is awakening..." -ForegroundColor Yellow
+Write-Host ""
+
+# Change to Vision root
+Push-Location $VISION_ROOT
+
+# Launch the Brain
+try {
+    node index.js
+} catch {
+    Write-Host ""
+    Write-Host "❌ Vision encountered an error: $_" -ForegroundColor Red
+    Write-Host ""
+} finally {
+    Pop-Location
+}
+
+# Cleanup
+Write-Host ""
+Write-Host "=======================================================================" -ForegroundColor Cyan
+Write-Host "😴 VISION HAS GONE TO SLEEP" -ForegroundColor Cyan
+Write-Host "=======================================================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "To wake Vision again, run: .\UNLEASH.ps1" -ForegroundColor Gray
+Write-Host "For debug mode: .\UNLEASH.ps1 -Debug" -ForegroundColor Gray
+Write-Host "For offline mode: .\UNLEASH.ps1 -GhostMode" -ForegroundColor Gray
+Write-Host ""
+
+if (!$Debug) {
+    Read-Host "Press Enter to exit"
+}
