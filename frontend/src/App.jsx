@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { Mic, MicOff, Send, Activity, BarChart3, MessageSquare, Target, Volume2, VolumeX, Upload, X, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { Mic, MicOff, Send, Activity, BarChart3, MessageSquare, Target, Volume2, VolumeX, Upload, X, CheckCircle, Clock, AlertCircle, Brain } from 'lucide-react'
 import MissionBoard from './components/MissionBoard'
 import AgentChat from './components/AgentChat'
 import HealthMonitor from './components/HealthMonitor'
 import Analytics from './components/Analytics'
 import VoiceInterface from './components/VoiceInterface'
+import NeuroLink from './components/NeuroLink'
 
 // Sound effects (beep sounds using Web Audio API)
 const playSound = (frequency = 800, duration = 100) => {
@@ -402,6 +403,7 @@ function App() {
           <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
             {[
               { id: 'mission', icon: Target, label: 'Missions' },
+              { id: 'neuro', icon: Brain, label: 'Neuro-Link' },
               { id: 'chat', icon: MessageSquare, label: 'Agent Chat' },
               { id: 'health', icon: Activity, label: 'Health' },
               { id: 'analytics', icon: BarChart3, label: 'Analytics' }
@@ -438,6 +440,14 @@ function App() {
             setSelectedAgent={setSelectedAgent}
             agents={agents}
             onRefresh={loadMissions}
+          />
+        )}
+
+        {currentView === 'neuro' && (
+          <NeuroLink
+            agents={agents}
+            selectedAgent={selectedAgent}
+            setSelectedAgent={setSelectedAgent}
           />
         )}
 

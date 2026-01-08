@@ -6,7 +6,10 @@
 
 const path = require('path');
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
+const axios = require('axios');
+const { randomUUID } = require('crypto');
+
+class AgentToAgentService {
 
 // A2A Task States
 const TaskState = {
@@ -82,7 +85,7 @@ function toA2ATask(gaingTask) {
 function fromA2ATask(a2aRequest) {
     const params = a2aRequest.params || {};
     return {
-        id: params.id || uuidv4(),
+        id: params.id || randomUUID(),
         title: params.metadata?.title || params.message?.parts?.[0]?.text?.slice(0, 100) || 'A2A Task',
         description: params.metadata?.description || ',
         instructions: params.message?.parts?.map(p => p.text).join('\n') || ',

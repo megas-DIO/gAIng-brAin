@@ -44,6 +44,22 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
+    // Fire-and-forget n8n webhook
+    const n8nWebhook = process.env.N8N_ONBOARDING_WEBHOOK;
+    if (n8nWebhook) {
+      // Use native fetch (Node 18+)
+      fetch(n8nWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data[0])
+      })
+      .then(res => {
+        if (!res.ok) console.error(`n8n webhook failed: ${res.status} ${res.statusText}`);
+        else console.log('n8n onboarding webhook fired successfully');
+      })
+      .catch(err => console.error('n8n webhook error:', err.message));
+    }
+
     res.json({ ok: true, member: data[0] });
   } catch (err) {
     console.error(err);

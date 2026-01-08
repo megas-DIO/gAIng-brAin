@@ -19,7 +19,7 @@ Write-Host ""
 # 1. Start Node.js Brain Server
 Write-Host "[1/4] Starting gAIng-Brain Server (Port 8080)..." -ForegroundColor Yellow
 Set-Location $ProjectRoot
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ProjectRoot'; npm start" -WindowStyle Minimized
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ProjectRoot'; npm start" -WindowStyle Hidden
 Start-Sleep -Seconds 3
 
 # 2. Initialize Vector Database (if not exists)
@@ -34,7 +34,7 @@ if (-not (Test-Path $vectorDbPath)) {
 Write-Host "[3/4] Starting Ngrok Tunnel..." -ForegroundColor Yellow
 $ngrokScript = Join-Path $ProjectRoot "scripts\start-ngrok.ps1"
 if (Test-Path $ngrokScript) {
-    Start-Process powershell -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$ngrokScript`"" -WindowStyle Minimized
+    Start-Process powershell -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$ngrokScript`"" -WindowStyle Hidden
     Start-Sleep -Seconds 2
 }
 

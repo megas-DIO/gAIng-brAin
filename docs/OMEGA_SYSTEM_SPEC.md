@@ -1,7 +1,7 @@
-# OMEGA SYSTEM SPECIFICATION (v0)
+# OMEGAI SYSTEM SPECIFICATION (v0)
 
 ## 1. Component Architecture
-The OMEGA system represents the "God Mode" operational layer of Project VIBRANIUM. It orchestrates autonomous agents to execute complex missions.
+The OMEGAI (Omniscient Multi-modal Emergent Generative Artificial Intelligence) system represents the "God Mode" operational layer of Project VIBRANIUM. It orchestrates autonomous agents to execute complex missions.
 
 ### Core Components
 - **The Brain (Orchestrator):** `src/core/brain.js`. Manages the loop, dispatches tasks, and holds state.

@@ -113,7 +113,7 @@ if (Test-Path $peakScript) {
 if ($StartServer) {
     Write-Status 'PHASE 5: Brain Server Launch' -Level 'PHASE'
     Set-Location $VisionRoot
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$VisionRoot'; node index.js" -WindowStyle Normal
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$VisionRoot'; node index.js" -WindowStyle Hidden
     Write-Status 'Brain server starting on port 8080...' -Level 'OK'
 }
 
@@ -124,7 +124,7 @@ if ($StartNgrok) {
     Write-Status 'PHASE 6: Ngrok Tunnel' -Level 'PHASE'
     $ngrokScript = Join-Path $VisionRoot 'scripts\start-ngrok.ps1'
     if (Test-Path $ngrokScript) {
-        Start-Process powershell -ArgumentList "-NoExit", "-File", "$ngrokScript" -WindowStyle Minimized
+        Start-Process powershell -ArgumentList "-NoExit", "-File", "$ngrokScript" -WindowStyle Hidden
         Write-Status 'Ngrok tunnel starting...' -Level 'OK'
     }
 }
@@ -136,7 +136,7 @@ if ($StartWatchdog) {
     Write-Status 'PHASE 7: Watchdog Activation' -Level 'PHASE'
     $watchdogScript = Join-Path $VisionRoot 'scripts\watchdog.ps1'
     if (Test-Path $watchdogScript) {
-        Start-Process powershell -ArgumentList "-NoExit", "-File", "$watchdogScript" -WindowStyle Minimized
+        Start-Process powershell -ArgumentList "-NoExit", "-File", "$watchdogScript" -WindowStyle Hidden
         Write-Status 'Watchdog active (monitoring log.md)' -Level 'OK'
     }
 }

@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const ngrok = require('@ngrok/ngrok');
 const wsManager = require('./src/services/websocket');
 const realtimeRoute = require('./src/routes/realtime');
+const grokVoiceRoute = require('./src/routes/grok-voice');
 const app = require('./src/app');
 const brain = require('./src/core/brain');
 
@@ -43,6 +44,11 @@ server.on('upgrade', (request, socket, head) => {
   } else if (url.pathname === '/realtime') {
     wss.handleUpgrade(request, socket, head, (ws) => {
       realtimeRoute.handleRealtimeConnection(ws);
+    });
+  } else if (url.pathname === '/grok-voice') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      const voice = url.searchParams.get('voice') || 'Rex';
+      grokVoiceRoute.handleGrokVoiceConnection(ws, { voice });
     });
   }
 });

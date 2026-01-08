@@ -1,13 +1,13 @@
 {
   "servers": {
-    "github-mcp": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp"
-    },
     "filesystem": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${workspaceFolder}"
+      ]
     }
   }
 }

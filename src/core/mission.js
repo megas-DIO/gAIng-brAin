@@ -1,10 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 class Mission {
     constructor(objective) {
-        this.id = uuidv4();
+        this.id = randomUUID();
         this.objective = objective;
         this.status = 'PENDING'; // PENDING, PLANNING, ACTIVE, BLOCKED, COMPLETE, FAILED
         this.steps = [];

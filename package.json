@@ -3,6 +3,8 @@
         "@ngrok/ngrok": "^1.7.0",
         "@ngrok/ngrok-win32-x64-msvc": "^1.7.0",
         "@openai/agents-realtime": "^0.3.7",
+        "@react-three/drei": "^10.7.7",
+        "@react-three/fiber": "^9.5.0",
         "@supabase/supabase-js": "^2.89.0",
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
@@ -14,6 +16,7 @@
         "openai": "^6.15.0",
         "screenshot-desktop": "^1.15.3",
         "sql.js": "^1.13.0",
+        "three": "^0.182.0",
         "uuid": "^13.0.0",
         "ws": "^8.14.2"
     },

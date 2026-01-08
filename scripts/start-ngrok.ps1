@@ -61,5 +61,5 @@ Write-Log "Starting ngrok from $ngrokCmd on port $Port"
 $outPath = Join-Path $logDir "ngrok-$timestamp.out.log"
 $errPath = Join-Path $logDir "ngrok-$timestamp.err.log"
 
-Start-Process -FilePath $ngrokCmd -ArgumentList "http $Port" -WorkingDirectory $ProjectRoot -WindowStyle Minimized -RedirectStandardOutput $outPath -RedirectStandardError $errPath
+Start-Process -FilePath $ngrokCmd -ArgumentList "http $Port" -WorkingDirectory $ProjectRoot -WindowStyle Hidden -RedirectStandardOutput $outPath -RedirectStandardError $errPath
 

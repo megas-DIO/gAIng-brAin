@@ -31,7 +31,7 @@ async function callLlm(payload) {
     else if (provider === 'perplexity') {
         apiKey = config.PERPLEXITY_API_KEY;
         baseUrl = 'https://api.perplexity.ai';
-        model = payload.model || 'llama-3.1-sonar-small-128k-online';
+        model = payload.model || 'sonar';
     }
     else {
         throw new Error(`Unknown LLM Provider: ${provider}`);

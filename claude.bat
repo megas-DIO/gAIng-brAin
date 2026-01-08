@@ -1,4 +1,7 @@
 @echo off
 :: Claude CLI Wrapper - gAIng Collective
-:: Launches Claude Code in dangerous god mode
-claude --dangerously-skip-permissions %*
+if /I "%1"=="ryse" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-claude.ps1"
+) else (
+    call claude.cmd %*
+)

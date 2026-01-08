@@ -7,51 +7,70 @@ const { sanitizeString, isValidAgentName } = require('../utils/helpers');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY);
 
-// POST /messages - Send a message
-// Body: { sender, recipient, intent, data }
+// POST /messages - Send a message (single or batch)
+// Body: { sender, recipient, intent, data } OR [{ sender, recipient, intent, data }, ...]
 // intent examples: "instruction", "task", "report", "ack", "query"
 // recipient: agent name, "broadcast" for all, or null
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const sender = sanitizeString(req.body.sender, 100);
-    const recipient = req.body.recipient ? sanitizeString(req.body.recipient, 100) : null;
-    const intent = sanitizeString(req.body.intent, 50);
-    const { data } = req.body;
+    const messagesToInsert = [];
+    const isBatch = Array.isArray(req.body);
+    const payload = isBatch ? req.body : [req.body];
 
-    if (!sender || !intent) {
-      return res.status(400).json({ error: 'sender and intent are required' });
+    for (const item of payload) {
+      const sender = sanitizeString(item.sender, 100);
+      const recipient = item.recipient ? sanitizeString(item.recipient, 100) : null;
+      const intent = sanitizeString(item.intent, 50);
+      const { data } = item;
+
+      if (!sender || !intent) {
+        if (isBatch) continue; // Skip invalid in batch
+        return res.status(400).json({ error: 'sender and intent are required' });
+      }
+
+      if (!isValidAgentName(sender)) {
+        if (isBatch) continue;
+        return res.status(400).json({ error: 'invalid sender name format' });
+      }
+
+      if (recipient && recipient !== 'broadcast' && !isValidAgentName(recipient)) {
+        if (isBatch) continue;
+        return res.status(400).json({ error: 'invalid recipient name format' });
+      }
+
+      messagesToInsert.push({
+        sender,
+        recipient: recipient || 'broadcast',
+        intent,
+        data: data || {},
+      });
     }
 
-    if (!isValidAgentName(sender)) {
-      return res.status(400).json({ error: 'invalid sender name format' });
+    if (messagesToInsert.length === 0) {
+      return res.status(400).json({ error: 'no valid messages to send' });
     }
 
-    if (recipient && recipient !== 'broadcast' && !isValidAgentName(recipient)) {
-      return res.status(400).json({ error: 'invalid recipient name format' });
-    }
-
-    const { data: message, error } = await supabase
+    const { data: insertedMessages, error } = await supabase
       .from('messages')
-      .insert([
-        {
-          sender,
-          recipient: recipient || 'broadcast',
-          intent,
-          data: data || {},
-        },
-      ])
-      .select()
-      .single();
+      .insert(messagesToInsert)
+      .select();
 
     if (error) {
-      console.error('Error inserting message:', error);
+      console.error('Error inserting messages:', error);
       return res.status(500).json({ error: error.message });
     }
 
-    // Broadcast message to connected WebSocket clients
-    wsManager.broadcast(message, message.recipient);
+    // Broadcast messages to connected WebSocket clients
+    // Note: Broadcasting sequentially to ensure order, but could be parallelized if needed
+    for (const msg of insertedMessages) {
+      wsManager.broadcast(msg, msg.recipient);
+    }
 
-    res.json({ ok: true, message });
+    if (isBatch) {
+      res.json({ ok: true, count: insertedMessages.length, messages: insertedMessages });
+    } else {
+      res.json({ ok: true, message: insertedMessages[0] });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'failed to send message' });
