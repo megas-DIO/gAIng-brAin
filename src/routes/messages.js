@@ -5,7 +5,19 @@ const requireAuth = require('../middleware/auth');
 const { createClient } = require('@supabase/supabase-js');
 const { sanitizeString, isValidAgentName } = require('../utils/helpers');
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY);
+// Support multiple env key names and handle missing credentials gracefully
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+
+let supabase = null;
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+  console.warn('[Messages] Supabase not configured. Messages API will use in-memory fallback.');
+}
+
+// In-memory fallback storage when Supabase is not available
+const inMemoryMessages = [];
 
 // POST /messages - Send a message (single or batch)
 // Body: { sender, recipient, intent, data } OR [{ sender, recipient, intent, data }, ...]
@@ -50,14 +62,28 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'no valid messages to send' });
     }
 
-    const { data: insertedMessages, error } = await supabase
-      .from('messages')
-      .insert(messagesToInsert)
-      .select();
+    let insertedMessages;
 
-    if (error) {
-      console.error('Error inserting messages:', error);
-      return res.status(500).json({ error: error.message });
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert(messagesToInsert)
+        .select();
+
+      if (error) {
+        console.error('Error inserting messages:', error);
+        return res.status(500).json({ error: error.message });
+      }
+      insertedMessages = data;
+    } else {
+      // In-memory fallback
+      insertedMessages = messagesToInsert.map((msg, i) => ({
+        id: `mem-${Date.now()}-${i}`,
+        ...msg,
+        created_at: new Date().toISOString(),
+        read_at: null
+      }));
+      inMemoryMessages.push(...insertedMessages);
     }
 
     // Broadcast messages to connected WebSocket clients
@@ -84,22 +110,38 @@ router.get('/', requireAuth, async (req, res) => {
     const { recipient, limit = 50, offset = 0, include_read = false } = req.query;
     const agent_name = recipient || req.user?.email || 'unknown';
 
-    let query = supabase
-      .from('messages')
-      .select('*', { count: 'exact' })
-      .or(`recipient.eq.${agent_name},recipient.eq.broadcast`)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    let messages, count;
 
-    if (include_read !== 'true') {
-      query = query.is('read_at', null);
-    }
+    if (supabase) {
+      let query = supabase
+        .from('messages')
+        .select('*', { count: 'exact' })
+        .or(`recipient.eq.${agent_name},recipient.eq.broadcast`)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + parseInt(limit) - 1);
 
-    const { data: messages, count, error } = await query;
+      if (include_read !== 'true') {
+        query = query.is('read_at', null);
+      }
 
-    if (error) {
-      console.error('Error fetching messages:', error);
-      return res.status(500).json({ error: error.message });
+      const { data, count: c, error } = await query;
+
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return res.status(500).json({ error: error.message });
+      }
+      messages = data;
+      count = c;
+    } else {
+      // In-memory fallback
+      let filtered = inMemoryMessages.filter(m => 
+        m.recipient === agent_name || m.recipient === 'broadcast'
+      );
+      if (include_read !== 'true') {
+        filtered = filtered.filter(m => !m.read_at);
+      }
+      count = filtered.length;
+      messages = filtered.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
     }
 
     res.json({ ok: true, messages, count, recipient: agent_name });
@@ -114,16 +156,29 @@ router.patch('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data: message, error } = await supabase
-      .from('messages')
-      .update({ read_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
+    let message;
 
-    if (error) {
-      console.error('Error updating message:', error);
-      return res.status(500).json({ error: error.message });
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating message:', error);
+        return res.status(500).json({ error: error.message });
+      }
+      message = data;
+    } else {
+      // In-memory fallback
+      const msgIndex = inMemoryMessages.findIndex(m => m.id === id);
+      if (msgIndex === -1) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+      inMemoryMessages[msgIndex].read_at = new Date().toISOString();
+      message = inMemoryMessages[msgIndex];
     }
 
     res.json({ ok: true, message });
@@ -139,16 +194,25 @@ router.get('/sender/:name', requireAuth, async (req, res) => {
     const { name } = req.params;
     const { limit = 50, offset = 0 } = req.query;
 
-    const { data: messages, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('sender', name)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    let messages;
 
-    if (error) {
-      console.error('Error fetching messages:', error);
-      return res.status(500).json({ error: error.message });
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('sender', name)
+        .order('created_at', { ascending: false })
+        .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return res.status(500).json({ error: error.message });
+      }
+      messages = data;
+    } else {
+      // In-memory fallback
+      const filtered = inMemoryMessages.filter(m => m.sender === name);
+      messages = filtered.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
     }
 
     res.json({ ok: true, messages, sender: name });

@@ -5,29 +5,45 @@ const EventEmitter = require('events');
 class Blackboard extends EventEmitter {
     constructor() {
         super();
-        this.logPath = process.env.AGENTS_MD_PATH || path.resolve(process.cwd(), 'log.md');
-        this.streamPath = path.resolve(process.cwd(), 'data', 'stream.json');
+        // Get the project root (two levels up from src/services)
+        const projectRoot = path.resolve(__dirname, '..', '..');
+        this.logPath = process.env.AGENTS_MD_PATH || path.resolve(projectRoot, 'log.md');
+        this.streamPath = path.resolve(projectRoot, 'data', 'stream.json');
         this.lastSize = 0;
         this.isLocked = false;
+        this.enabled = true; // Can be disabled if log.md is inaccessible
     }
 
     // Initialize the Blackboard
     init() {
-        console.log(`[Blackboard] Watching: ${this.logPath}`);
-        if (!fs.existsSync(this.logPath)) {
-            fs.writeFileSync(this.logPath, '# gAIng Brain Log\n\n## Command Queue\n');
-        }
-        
-        // Initial Read
-        const stats = fs.statSync(this.logPath);
-        this.lastSize = stats.size;
-
-        // Watch for updates
-        fs.watchFile(this.logPath, { interval: 1000 }, (curr, prev) => {
-            if (curr.mtime > prev.mtime) {
-                this.readNewContent();
+        try {
+            console.log(`[Blackboard] Watching: ${this.logPath}`);
+            
+            // Ensure parent directory exists
+            const logDir = path.dirname(this.logPath);
+            if (!fs.existsSync(logDir)) {
+                fs.mkdirSync(logDir, { recursive: true });
             }
-        });
+            
+            if (!fs.existsSync(this.logPath)) {
+                fs.writeFileSync(this.logPath, '# gAIng Brain Log\n\n## Command Queue\n');
+            }
+        
+            // Initial Read
+            const stats = fs.statSync(this.logPath);
+            this.lastSize = stats.size;
+
+            // Watch for updates
+            fs.watchFile(this.logPath, { interval: 1000 }, (curr, prev) => {
+                if (curr.mtime > prev.mtime) {
+                    this.readNewContent();
+                }
+            });
+        } catch (err) {
+            console.warn(`[Blackboard] Unable to initialize log.md at ${this.logPath}. Blackboard disabled.`);
+            console.warn(`[Blackboard] Error: ${err.message}`);
+            this.enabled = false;
+        }
     }
 
     // Read only new lines appended to the log
