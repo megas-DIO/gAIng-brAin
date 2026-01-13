@@ -18,6 +18,7 @@ const voiceRoutes = require('./routes/voice');
 const eyesRoutes = require('./routes/eyes');
 const earsRoutes = require('./routes/ears');
 const analyticsRoutes = require('./routes/analytics');
+const vibraniumRoutes = require('./routes/vibranium');
 
 // Consciousness Kernel
 const { ConsciousnessKernel } = require('./services/consciousnessKernel');
@@ -72,6 +73,7 @@ app.use('/eyes', eyesRoutes);
 app.use('/ears', earsRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/api/kernel', createKernelRouter(kernel));
+app.use('/api/vibranium', vibraniumRoutes);
 app.use('/captures', express.static('public/captures'));
 
 module.exports = app;

@@ -182,34 +182,119 @@ class DropWatcher {
     }
 
     /**
-     * Process PDF (basic implementation - would need pdf-parse library)
+     * Process PDF with full text extraction
      */
     async processPDF(filepath, filename) {
-        // For now, just acknowledge the PDF
-        // In production, you'd use pdf-parse or similar
-        console.log(`[DropWatcher] PDF processing not fully implemented: ${filename}`);
-        this.stream.think(`PDF detected but full processing not available: ${filename}`);
+        try {
+            const pdfParse = require('pdf-parse');
+            const dataBuffer = fs.readFileSync(filepath);
 
-        // Basic metadata storage
-        const stats = fs.statSync(filepath);
-        await this.vectorMemory.storeMemory(`PDF document: ${filename}`, {
-            metadata: {
-                filename,
+            console.log(`[DropWatcher] Extracting text from PDF: ${filename}`);
+            this.stream.think(`Processing PDF: ${filename}`);
+
+            // Parse PDF
+            const pdfData = await pdfParse(dataBuffer);
+            const text = pdfData.text;
+
+            // Chunk the text (split into ~1000 char chunks)
+            const chunks = this.chunkText(text, 1000);
+
+            // Store document chunks
+            const documentId = `pdf_${Date.now()}_${filename}`;
+            await this.vectorMemory.storeDocumentChunks(documentId, chunks.map((chunk, i) => ({
+                content: chunk,
+                metadata: {
+                    filename,
+                    chunk_index: i,
+                    total_chunks: chunks.length,
+                    pages: pdfData.numpages
+                }
+            })));
+
+            // Also store summary memory
+            const summary = text.substring(0, 500) + (text.length > 500 ? '...' : '');
+            await this.vectorMemory.storeMemory(`PDF: ${filename}\n\n${summary}`, {
+                metadata: {
+                    filename,
+                    source: 'drop_folder',
+                    file_type: 'pdf',
+                    pages: pdfData.numpages,
+                    text_length: text.length,
+                    chunks: chunks.length
+                },
                 source: 'drop_folder',
-                file_type: 'pdf',
-                size: stats.size
-            },
-            source: 'drop_folder',
-            type: 'document',
-            importance: 8,
-            tags: ['document', 'pdf', path.basename(filename, '.pdf')]
-        });
+                type: 'document',
+                importance: 8,
+                tags: ['document', 'pdf', path.basename(filename, '.pdf')]
+            });
 
-        return {
-            success: true,
-            type: 'pdf',
-            note: 'Metadata stored, full text extraction requires pdf-parse library'
-        };
+            console.log(`[DropWatcher] PDF processed: ${filename} (${pdfData.numpages} pages, ${chunks.length} chunks)`);
+            this.stream.success(`PDF processed: ${filename}`, {
+                pages: pdfData.numpages,
+                chunks: chunks.length,
+                text_length: text.length
+            });
+
+            return {
+                success: true,
+                type: 'pdf',
+                pages: pdfData.numpages,
+                chunks: chunks.length,
+                text_length: text.length
+            };
+
+        } catch (error) {
+            console.error(`[DropWatcher] Error processing PDF ${filename}:`, error);
+            this.stream.error(`Failed to process PDF: ${filename}`, { error: error.message });
+
+            // Fallback: just store metadata
+            const stats = fs.statSync(filepath);
+            await this.vectorMemory.storeMemory(`PDF document: ${filename} (processing failed)`, {
+                metadata: {
+                    filename,
+                    source: 'drop_folder',
+                    file_type: 'pdf',
+                    size: stats.size,
+                    error: error.message
+                },
+                source: 'drop_folder',
+                type: 'document',
+                importance: 7,
+                tags: ['document', 'pdf', path.basename(filename, '.pdf')]
+            });
+
+            return {
+                success: true,
+                type: 'pdf',
+                note: 'Metadata stored, text extraction failed',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Chunk text into smaller pieces
+     */
+    chunkText(text, chunkSize = 1000) {
+        const chunks = [];
+        let currentChunk = '';
+
+        const sentences = text.split(/[.!?]\s+/);
+
+        for (const sentence of sentences) {
+            if (currentChunk.length + sentence.length > chunkSize && currentChunk.length > 0) {
+                chunks.push(currentChunk.trim());
+                currentChunk = sentence;
+            } else {
+                currentChunk += (currentChunk ? '. ' : '') + sentence;
+            }
+        }
+
+        if (currentChunk) {
+            chunks.push(currentChunk.trim());
+        }
+
+        return chunks;
     }
 
     /**

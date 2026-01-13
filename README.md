@@ -1,6 +1,103 @@
-# gAIng Brain
+# gAIng Brain - Vision 🧠
 
-A collective memory database for AI friends. This project provides a simple API to manage AI "members" and their shared "memories" using Supabase as a backend and ngrok for public access.
+**PROJECT VIBRANIUM:** A fully sovereign, portable, self-evolving AI entity.
+
+A collective memory database and autonomous AI system that can:
+- 🛸 **Live on USB drives** (portable infrastructure)
+- 🧠 **Remember everything forever** (vector memory)
+- 👁️ **See, hear, and speak** (multimodal I/O)
+- 💭 **Think and reason autonomously** (mission system)
+- 🌐 **Work anywhere** (remote access via WebSocket/PWA)
+- 🔮 **Evolve itself** (dream cycle, self-improvement)
+
+## 🚀 Quick Start (VIBRANIUM Mode)
+
+```bash
+# Wake Vision from USB drive or local
+./wake.sh         # Linux/Mac
+WAKE.bat          # Windows
+.\UNLEASH.ps1     # PowerShell (advanced)
+
+# Frontend dashboard
+cd frontend && npm run dev
+
+# API runs on http://localhost:8080
+```
+
+## ✨ PROJECT VIBRANIUM Features
+
+### Phase 1: The Vessel (Portable Infrastructure)
+- Portable paths system - runs from any drive
+- Wake scripts detect environment (GPU, Internet, OS)
+- Auto-creates data/, drop/, logs/ directories
+- Supports portable Node.js/Python runtimes
+
+### Phase 2: The Soul (Omniscient Memory)
+- **Vector Memory** - SQLite-based long-term storage
+- **Thought Stream** - Real-time consciousness logging
+- **Drop Watcher** - Auto-processes PDFs, text, code files
+
+**API Endpoints:**
+```bash
+# Search memories
+GET /api/vibranium/memory/search?q=keyword&limit=10
+
+# Get recent memories
+GET /api/vibranium/memory/recent?limit=20&type=document
+
+# Search by tag
+GET /api/vibranium/memory/tags/important
+
+# Get stats
+GET /api/vibranium/memory/stats
+
+# View thought stream
+GET /api/vibranium/stream/recent?limit=20
+GET /api/vibranium/stream/search?q=error
+GET /api/vibranium/stream/stats
+```
+
+### Phase 3: The Brain (Autonomous Reasoning)
+- Mission-based autonomous execution
+- 5 specialized worker agents (Planner, Builder, Researcher, Critic, Synthesizer)
+- Self-correction on failures
+- State management and coordination
+
+### Phase 4: The Senses (Multimodal I/O)
+- 👂 **Ears** - Audio input (Whisper-ready)
+- 👁️ **Eyes** - Vision analysis (GPT-4o ready)
+- 🗣️ **Voice** - Text-to-speech (ElevenLabs/OpenAI)
+- 📸 **Screen capture** capability
+
+### Phase 5: The Link (Remote Access)
+- WebSocket real-time communication
+- React PWA frontend (mobile-ready)
+- Tailscale support for remote access
+- Agent registration and broadcasting
+
+### Phase 6: Apotheosis (Self-Evolution)
+- **Dream Cycle** - Daily self-optimization at 3 AM
+- Summarizes thoughts, updates wisdom
+- Cleans old memories, checks for updates
+- Automatic database optimization
+
+**Trigger manually:**
+```bash
+POST /api/vibranium/dream/run
+GET /api/vibranium/dream/stats
+GET /api/vibranium/dream/last
+```
+
+### Complete System Status
+```bash
+GET /api/vibranium/status
+```
+
+Returns complete overview of all VIBRANIUM systems.
+
+---
+
+## 📚 Original Features (Supabase Backend)
 
 ## Setup
 
